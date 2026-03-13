@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  VIEWER
+}
+
+enum TicketStatus {
+  RECEIVED
+  ISSUE_CREATED
+  FIX_IN_PROGRESS
+  PR_OPEN
+  CHANGES_REQUESTED
+  MERGED
+  DEPLOYED
+  CLOSED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  image     String?
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  repoOwner        String?
+  repoName         String?
+  supportEmail     String?
+  vercelProjectId  String?
+  webhookSecret    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tickets          Ticket[]
+}
+
+model Ticket {
+  id              String       @id @default(cuid())
+  publicId        String       @unique
+  productId       String
+  product         Product      @relation(fields: [productId], references: [id])
+  submitterEmail  String
+  submitterName   String?
+  subject         String
+  body            String
+  status          TicketStatus @default(RECEIVED)
+  issueNumber     Int?
+  issueUrl        String?
+  prNumber        Int?
+  prUrl           String?
+  releaseId       String?
+  releaseTag      String?
+  deploymentUrl   String?
+  deployedAt      DateTime?
+  humanFlagged    Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  timelineEvents  TimelineEvent[]
+  notifications   Notification[]
+
+  @@index([productId])
+  @@index([status])
+  @@index([submitterEmail])
+}
+
+model TimelineEvent {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  eventType String
+  actor     String?
+  summary   String
+  payload   Json?
+  public    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model Notification {
+  id             String             @id @default(cuid())
+  ticketId       String
+  ticket         Ticket             @relation(fields: [ticketId], references: [id])
+  recipientEmail String
+  eventType      String
+  status         NotificationStatus @default(PENDING)
+  sentAt         DateTime?
+  createdAt      DateTime           @default(now())
+
+  @@index([ticketId])
+}
