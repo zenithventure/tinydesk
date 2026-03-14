@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma"
 import { PipelineProgress } from "@/components/pipeline-progress"
 import { TicketStatusBadge } from "@/components/ticket-status-badge"
 import { Timeline } from "@/components/timeline"
+import { LocalDateTime } from "@/components/local-date-time"
 
 interface PageProps {
   params: { publicId: string }
@@ -55,7 +56,7 @@ export default async function PublicTicketPage({ params }: PageProps) {
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{ticket.subject}</h1>
         <p className="text-sm text-gray-500 mb-6">
-          {ticket.product.name} &middot; Submitted {new Date(ticket.createdAt).toLocaleDateString()}
+          {ticket.product.name} &middot; Submitted <LocalDateTime value={ticket.createdAt.toISOString()} />
         </p>
 
         {/* Pipeline Progress */}
