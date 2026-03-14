@@ -1,12 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Link from "next/link"
-import { CheckCircle, ExternalLink } from "lucide-react"
+import { CheckCircle, ExternalLink, ImagePlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/lib/contexts/auth-context"
+
+const MAX_SCREENSHOTS = 3
+const MAX_FILE_SIZE = 5 * 1024 * 1024
 
 export default function SupportPage() {
   const { user } = useAuth()
@@ -15,6 +18,39 @@ export default function SupportPage() {
   const [submitted, setSubmitted] = useState<string | null>(null)
   const [subject, setSubject] = useState("")
   const [body, setBody] = useState("")
+  const [files, setFiles] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(e.target.files || [])
+    const remaining = MAX_SCREENSHOTS - files.length
+    const toAdd = selected.slice(0, remaining)
+
+    for (const file of toAdd) {
+      if (file.size > MAX_FILE_SIZE) {
+        setError(`"${file.name}" exceeds 5MB limit`)
+        return
+      }
+      if (!file.type.startsWith("image/")) {
+        setError(`"${file.name}" is not an image`)
+        return
+      }
+    }
+
+    setError(null)
+    const newFiles = [...files, ...toAdd]
+    setFiles(newFiles)
+    setPreviews(newFiles.map((f) => URL.createObjectURL(f)))
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  function removeFile(index: number) {
+    URL.revokeObjectURL(previews[index])
+    const newFiles = files.filter((_, i) => i !== index)
+    setFiles(newFiles)
+    setPreviews(newFiles.map((f) => URL.createObjectURL(f)))
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -22,6 +58,27 @@ export default function SupportPage() {
     setError(null)
 
     try {
+      let screenshots: string[] | undefined
+
+      if (files.length > 0) {
+        const uploadData = new FormData()
+        files.forEach((f) => uploadData.append("files", f))
+
+        const uploadRes = await fetch("/api/tickets/upload", {
+          method: "POST",
+          body: uploadData,
+        })
+
+        if (!uploadRes.ok) {
+          const data = await uploadRes.json()
+          setError(data.error || "Failed to upload screenshots")
+          return
+        }
+
+        const uploadResult = await uploadRes.json()
+        screenshots = uploadResult.urls
+      }
+
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -31,6 +88,7 @@ export default function SupportPage() {
           submitterName: user?.name,
           subject,
           body,
+          screenshots,
         }),
       })
 
@@ -76,6 +134,8 @@ export default function SupportPage() {
                 setSubmitted(null)
                 setSubject("")
                 setBody("")
+                setFiles([])
+                setPreviews([])
               }}
             >
               Submit another ticket
@@ -127,6 +187,50 @@ export default function SupportPage() {
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
+
+          {/* Screenshots */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Screenshots (optional, max {MAX_SCREENSHOTS})
+            </label>
+
+            {previews.length > 0 && (
+              <div className="flex gap-2 mb-2">
+                {previews.map((src, i) => (
+                  <div key={i} className="relative w-20 h-20 rounded-lg border overflow-hidden group">
+                    <img src={src} alt={`Screenshot ${i + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {files.length < MAX_SCREENSHOTS && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition"
+              >
+                <ImagePlus className="w-4 h-4" />
+                Add screenshot
+              </button>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </div>
 
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Submitting..." : "Submit Ticket"}

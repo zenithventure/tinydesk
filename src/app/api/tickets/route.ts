@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { productSlug, submitterEmail, submitterName, subject, body: ticketBody } = parsed.data
+    const { productSlug, submitterEmail, submitterName, subject, body: ticketBody, screenshots } = parsed.data
 
     const product = await prisma.product.findUnique({
       where: { slug: productSlug },
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       submitterName,
       subject,
       body: ticketBody,
+      screenshots,
     })
 
     return NextResponse.json(

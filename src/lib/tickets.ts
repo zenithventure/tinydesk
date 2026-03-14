@@ -11,6 +11,7 @@ export async function createTicket(input: {
   submitterName?: string
   subject: string
   body: string
+  screenshots?: string[]
 }) {
   // Get the next sequence number
   const count = await prisma.ticket.count()
@@ -24,6 +25,7 @@ export async function createTicket(input: {
       submitterName: input.submitterName,
       subject: input.subject,
       body: input.body,
+      screenshots: input.screenshots?.length ? input.screenshots : undefined,
       status: "RECEIVED",
     },
     include: { product: true },
@@ -90,6 +92,7 @@ async function autoCreateGitHubIssue(ticket: {
   publicId: string
   subject: string
   body: string
+  screenshots: any
   submitterEmail: string
   product: { repoOwner: string | null; repoName: string | null; defaultAssignee: string | null }
 }) {
@@ -97,10 +100,15 @@ async function autoCreateGitHubIssue(ticket: {
   if (!repoOwner || !repoName) return
 
   const statusUrl = absoluteUrl(`/ticket/${ticket.publicId}`)
+  const screenshots = Array.isArray(ticket.screenshots) ? ticket.screenshots as string[] : []
+  const screenshotSection = screenshots.length
+    ? ["", "### Screenshots", ...screenshots.map((url, i) => `![Screenshot ${i + 1}](${url})`)]
+    : []
   const issueBody = [
     `**${ticket.subject}**`,
     "",
     ticket.body,
+    ...screenshotSection,
     "",
     "---",
     `TinyDesk-Ticket: ${ticket.publicId}`,

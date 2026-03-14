@@ -72,6 +72,7 @@ model Ticket {
   releaseTag      String?
   deploymentUrl   String?
   deployedAt      DateTime?
+  screenshots     Json?
   humanFlagged    Boolean      @default(false)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt

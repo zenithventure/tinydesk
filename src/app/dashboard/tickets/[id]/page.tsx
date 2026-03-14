@@ -28,6 +28,7 @@ interface TicketDetail {
   submitterName?: string | null
   status: TicketStatus
   humanFlagged: boolean
+  screenshots?: string[] | null
   issueUrl?: string | null
   prUrl?: string | null
   deploymentUrl?: string | null
@@ -180,6 +181,18 @@ export default function TicketDetailPage() {
       <div className="bg-white rounded-xl border p-6 mb-6">
         <h2 className="text-sm font-medium text-gray-700 mb-3">Description</h2>
         <p className="text-sm text-gray-600 whitespace-pre-wrap">{ticket.body}</p>
+        {Array.isArray(ticket.screenshots) && ticket.screenshots.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-xs font-medium text-gray-500 mb-2">Screenshots</h3>
+            <div className="flex gap-2">
+              {(ticket.screenshots as string[]).map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                  <img src={url} alt={`Screenshot ${i + 1}`} className="rounded-lg border w-32 h-24 object-cover hover:opacity-90 transition" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Links */}

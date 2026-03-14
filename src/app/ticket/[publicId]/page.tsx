@@ -64,6 +64,24 @@ export default async function PublicTicketPage({ params }: PageProps) {
           <PipelineProgress status={ticket.status} />
         </div>
 
+        {/* Screenshots */}
+        {Array.isArray(ticket.screenshots) && ticket.screenshots.length > 0 && (
+          <div className="bg-white rounded-xl border p-6 mb-6">
+            <h2 className="text-sm font-medium text-gray-700 mb-3">Screenshots</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(ticket.screenshots as string[]).map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={url}
+                    alt={`Screenshot ${i + 1}`}
+                    className="rounded-lg border w-full object-cover max-h-64 hover:opacity-90 transition"
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Links */}
         {(ticket.issueUrl || ticket.prUrl || ticket.deploymentUrl) && (
           <div className="bg-white rounded-xl border p-6 mb-6">

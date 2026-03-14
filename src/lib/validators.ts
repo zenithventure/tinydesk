@@ -6,6 +6,7 @@ export const createTicketSchema = z.object({
   submitterName: z.string().optional(),
   subject: z.string().min(1, "Subject is required").max(200, "Subject too long"),
   body: z.string().min(1, "Description is required").max(5000, "Description too long"),
+  screenshots: z.array(z.string().url()).max(3, "Maximum 3 screenshots").optional(),
 })
 
 export const updateTicketSchema = z.object({
