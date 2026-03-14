@@ -17,11 +17,16 @@ export async function requireAdmin() {
  * Returns the product IDs that the given user owns.
  */
 export async function getOwnedProductIds(userId: string): Promise<string[]> {
-  const rows = await prisma.productOwner.findMany({
-    where: { userId },
-    select: { productId: true },
-  })
-  return rows.map((r) => r.productId)
+  try {
+    const rows = await prisma.productOwner.findMany({
+      where: { userId },
+      select: { productId: true },
+    })
+    return rows.map((r) => r.productId)
+  } catch {
+    // ProductOwner table may not exist yet if the migration hasn't been applied.
+    return []
+  }
 }
 
 /**
