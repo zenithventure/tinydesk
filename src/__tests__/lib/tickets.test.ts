@@ -159,6 +159,146 @@ describe("createTicket", () => {
     const { createGitHubIssue } = await import("@/lib/github-app")
     expect(createGitHubIssue).not.toHaveBeenCalled()
   })
+
+  it("auto-creates GitHub issue when app is configured and product has repo", async () => {
+    vi.mocked(isGitHubAppConfigured).mockReturnValue(true)
+    vi.mocked(prisma.ticket.count).mockResolvedValue(7)
+    vi.mocked(prisma.ticket.create).mockResolvedValue({
+      id: "ticket-5",
+      publicId: "TD-0008",
+      productId: "product-tinydesk",
+      submitterEmail: "szewong@zenithstudio.io",
+      subject: "Add product owner role to the system",
+      body: "We need a product owner role.",
+      screenshots: [],
+      status: "RECEIVED",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      product: {
+        name: "TinyDesk",
+        repoOwner: "zenithventure",
+        repoName: "tinydesk",
+        defaultAssignee: null,
+      },
+    } as any)
+    vi.mocked(prisma.timelineEvent.create).mockResolvedValue({} as any)
+    vi.mocked(prisma.ticket.update).mockResolvedValue({} as any)
+
+    const { createGitHubIssue } = await import("@/lib/github-app")
+    vi.mocked(createGitHubIssue).mockResolvedValue({
+      number: 42,
+      html_url: "https://github.com/zenithventure/tinydesk/issues/42",
+    })
+
+    await createTicket({
+      productId: "product-tinydesk",
+      submitterEmail: "szewong@zenithstudio.io",
+      subject: "Add product owner role to the system",
+      body: "We need a product owner role.",
+    })
+
+    expect(createGitHubIssue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: "zenithventure",
+        repo: "tinydesk",
+        title: "[TD-0008] Add product owner role to the system",
+      })
+    )
+    expect(prisma.ticket.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          issueNumber: 42,
+          issueUrl: "https://github.com/zenithventure/tinydesk/issues/42",
+          status: "ISSUE_CREATED",
+        }),
+      })
+    )
+  })
+
+  it("auto-creates GitHub issue and sets FIX_IN_PROGRESS when defaultAssignee is set", async () => {
+    vi.mocked(isGitHubAppConfigured).mockReturnValue(true)
+    vi.mocked(prisma.ticket.count).mockResolvedValue(8)
+    vi.mocked(prisma.ticket.create).mockResolvedValue({
+      id: "ticket-6",
+      publicId: "TD-0009",
+      productId: "product-tinydesk",
+      submitterEmail: "user@example.com",
+      subject: "Another bug",
+      body: "Bug details",
+      screenshots: [],
+      status: "RECEIVED",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      product: {
+        name: "TinyDesk",
+        repoOwner: "zenithventure",
+        repoName: "tinydesk",
+        defaultAssignee: "szewong",
+      },
+    } as any)
+    vi.mocked(prisma.timelineEvent.create).mockResolvedValue({} as any)
+    vi.mocked(prisma.ticket.update).mockResolvedValue({} as any)
+
+    const { createGitHubIssue } = await import("@/lib/github-app")
+    vi.mocked(createGitHubIssue).mockResolvedValue({
+      number: 43,
+      html_url: "https://github.com/zenithventure/tinydesk/issues/43",
+    })
+
+    await createTicket({
+      productId: "product-tinydesk",
+      submitterEmail: "user@example.com",
+      subject: "Another bug",
+      body: "Bug details",
+    })
+
+    expect(createGitHubIssue).toHaveBeenCalledWith(
+      expect.objectContaining({ assignee: "szewong" })
+    )
+    expect(prisma.ticket.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "FIX_IN_PROGRESS" }),
+      })
+    )
+  })
+
+  it("gracefully handles GitHub issue creation failure without crashing ticket creation", async () => {
+    vi.mocked(isGitHubAppConfigured).mockReturnValue(true)
+    vi.mocked(prisma.ticket.count).mockResolvedValue(9)
+    vi.mocked(prisma.ticket.create).mockResolvedValue({
+      id: "ticket-7",
+      publicId: "TD-0010",
+      productId: "product-tinydesk",
+      submitterEmail: "user@example.com",
+      subject: "Test failure handling",
+      body: "Details",
+      screenshots: [],
+      status: "RECEIVED",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      product: {
+        name: "TinyDesk",
+        repoOwner: "zenithventure",
+        repoName: "tinydesk",
+        defaultAssignee: null,
+      },
+    } as any)
+    vi.mocked(prisma.timelineEvent.create).mockResolvedValue({} as any)
+
+    const { createGitHubIssue } = await import("@/lib/github-app")
+    vi.mocked(createGitHubIssue).mockRejectedValue(new Error("GitHub API error"))
+
+    // Should not throw — ticket creation succeeds even if issue creation fails
+    const result = await createTicket({
+      productId: "product-tinydesk",
+      submitterEmail: "user@example.com",
+      subject: "Test failure handling",
+      body: "Details",
+    })
+
+    expect(result.publicId).toBe("TD-0010")
+    expect(createGitHubIssue).toHaveBeenCalled()
+  })
 })
 
 describe("updateTicketStatus", () => {

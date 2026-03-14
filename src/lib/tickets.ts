@@ -43,11 +43,22 @@ export async function createTicket(input: {
   // Send receipt email (fire-and-forget)
   sendTicketReceipt(input.submitterEmail, publicId, input.subject)
 
-  // Auto-create GitHub issue if the product has a linked repo
+  // Auto-create GitHub issue if the product has a linked repo.
+  // Awaited (not fire-and-forget) so the operation completes within the request
+  // lifecycle — fire-and-forget is unsafe in Vercel serverless: the function may
+  // be terminated as soon as the HTTP response is sent, before async side-effects
+  // finish.
   if (ticket.product.repoOwner && ticket.product.repoName && isGitHubAppConfigured()) {
-    autoCreateGitHubIssue(ticket).catch((err) => {
+    try {
+      await autoCreateGitHubIssue(ticket)
+    } catch (err) {
       console.error("[tickets] Failed to auto-create GitHub issue:", err)
-    })
+    }
+  } else if (ticket.product.repoOwner && ticket.product.repoName && !isGitHubAppConfigured()) {
+    console.warn(
+      "[tickets] Product has a linked repo but GitHub App is not configured — " +
+        "set GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, and GITHUB_APP_INSTALLATION_ID to enable auto-issue creation."
+    )
   }
 
   return ticket
