@@ -1,35 +1,36 @@
 import { createPrivateKey, createSign } from "crypto"
 
-const APP_ID = process.env.GITHUB_APP_ID
-const PRIVATE_KEY = process.env.GITHUB_APP_PRIVATE_KEY?.replace(/\\n/g, "\n")
-const INSTALLATION_ID = process.env.GITHUB_APP_INSTALLATION_ID
-
 function generateJWT(): string {
-  if (!APP_ID || !PRIVATE_KEY) {
+  const appId = process.env.GITHUB_APP_ID
+  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY?.replace(/\\n/g, "\n")
+
+  if (!appId || !privateKey) {
     throw new Error("GitHub App credentials not configured")
   }
 
   const now = Math.floor(Date.now() / 1000)
   const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")
   const payload = Buffer.from(
-    JSON.stringify({ iat: now - 60, exp: now + 600, iss: APP_ID })
+    JSON.stringify({ iat: now - 60, exp: now + 600, iss: appId })
   ).toString("base64url")
 
   const sign = createSign("RSA-SHA256")
   sign.update(`${header}.${payload}`)
-  const signature = sign.sign(createPrivateKey(PRIVATE_KEY), "base64url")
+  const signature = sign.sign(createPrivateKey(privateKey), "base64url")
 
   return `${header}.${payload}.${signature}`
 }
 
 async function getInstallationToken(): Promise<string> {
-  if (!INSTALLATION_ID) {
+  const installationId = process.env.GITHUB_APP_INSTALLATION_ID
+
+  if (!installationId) {
     throw new Error("GitHub App installation ID not configured")
   }
 
   const jwt = generateJWT()
   const res = await fetch(
-    `https://api.github.com/app/installations/${INSTALLATION_ID}/access_tokens`,
+    `https://api.github.com/app/installations/${installationId}/access_tokens`,
     {
       method: "POST",
       headers: {
@@ -87,6 +88,16 @@ export async function createGitHubIssue(opts: {
   return { number: data.number, html_url: data.html_url }
 }
 
+/**
+ * Check whether the GitHub App is configured by reading env vars at call time.
+ * Reading at call time (rather than module load time) avoids a Next.js module
+ * caching edge case where constants captured at import time can be stale if the
+ * module was first loaded before env vars were fully hydrated.
+ */
 export function isGitHubAppConfigured(): boolean {
-  return !!(APP_ID && PRIVATE_KEY && INSTALLATION_ID)
+  return !!(
+    process.env.GITHUB_APP_ID &&
+    process.env.GITHUB_APP_PRIVATE_KEY &&
+    process.env.GITHUB_APP_INSTALLATION_ID
+  )
 }
