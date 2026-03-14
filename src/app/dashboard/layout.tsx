@@ -7,18 +7,22 @@ import { Ticket, Settings, LayoutDashboard, LogOut, Menu, X, Package, LifeBuoy }
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/contexts/auth-context"
 
-const navItems = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
-  { href: "/dashboard/products", label: "Products", icon: Package },
-  { href: "/dashboard/support", label: "Support", icon: LifeBuoy },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+const ALL_NAV_ITEMS = [
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, adminOrOwnerOnly: false },
+  { href: "/dashboard/tickets", label: "Tickets", icon: Ticket, adminOrOwnerOnly: false },
+  { href: "/dashboard/products", label: "Products", icon: Package, adminOrOwnerOnly: true },
+  { href: "/dashboard/support", label: "Support", icon: LifeBuoy, adminOrOwnerOnly: false },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, adminOrOwnerOnly: false },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, isLoading, isAuthenticated, logout } = useAuth()
+  const { user, isLoading, isAuthenticated, isAdmin, isProductOwner, logout } = useAuth()
+
+  const navItems = ALL_NAV_ITEMS.filter(
+    (item) => !item.adminOrOwnerOnly || isAdmin || isProductOwner
+  )
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {

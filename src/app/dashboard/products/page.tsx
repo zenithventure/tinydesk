@@ -1,12 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Package, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { EmptyState } from "@/components/empty-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProductForm } from "@/components/product-form"
+import { useAuth } from "@/lib/contexts/auth-context"
 
 interface Product {
   id: string
@@ -19,9 +21,18 @@ interface Product {
 }
 
 export default function ProductsPage() {
+  const router = useRouter()
+  const { isAdmin, isProductOwner, isLoading: authLoading } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
+
+  // Redirect regular users (non-admin, non-product-owner) away from this page.
+  useEffect(() => {
+    if (!authLoading && !isAdmin && !isProductOwner) {
+      router.replace("/dashboard")
+    }
+  }, [authLoading, isAdmin, isProductOwner, router])
 
   async function fetchProducts() {
     try {
@@ -38,6 +49,11 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts()
   }, [])
+
+  // Don't render the page while we're checking auth or if user lacks access.
+  if (authLoading || (!isAdmin && !isProductOwner)) {
+    return null
+  }
 
   return (
     <div>
