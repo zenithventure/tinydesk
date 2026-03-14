@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, ExternalLink, Flag, Clock } from "lucide-react"
+import { ArrowLeft, ExternalLink, Flag, Clock, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -51,6 +51,8 @@ export default function TicketDetailPage() {
   const [updating, setUpdating] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [reissuing, setReissuing] = useState(false)
+  const [reissueMessage, setReissueMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const fetchData = useCallback(async (silent = false) => {
     if (silent) {
@@ -126,6 +128,27 @@ export default function TicketDetailPage() {
     }
   }
 
+  async function handleReissue() {
+    if (!ticket) return
+    setReissuing(true)
+    setReissueMessage(null)
+    try {
+      const res = await fetch(`/api/dashboard/tickets/${ticket.id}/reissue`, { method: "POST" })
+      const data = await res.json()
+      if (res.ok) {
+        setReissueMessage({ type: "success", text: data.message ?? "GitHub issue created" })
+        // Refresh ticket data to show the new issueUrl
+        await fetchData(true)
+      } else {
+        setReissueMessage({ type: "error", text: data.error ?? "Failed to reissue ticket" })
+      }
+    } catch {
+      setReissueMessage({ type: "error", text: "Network error — please try again" })
+    } finally {
+      setReissuing(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -192,6 +215,24 @@ export default function TicketDetailPage() {
             disabled={updating}
           />
         </div>
+        {!ticket.issueUrl && (
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleReissue}
+              disabled={reissuing}
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${reissuing ? "animate-spin" : ""}`} />
+              {reissuing ? "Creating…" : "Reissue Ticket"}
+            </Button>
+            {reissueMessage && (
+              <p className={`text-xs ${reissueMessage.type === "success" ? "text-emerald-600" : "text-red-500"}`}>
+                {reissueMessage.text}
+              </p>
+            )}
+          </div>
+        )}
         <Link
           href={`/ticket/${ticket.publicId}`}
           target="_blank"
