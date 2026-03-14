@@ -7,6 +7,7 @@ vi.mock("@/lib/prisma", () => ({
       count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      findUnique: vi.fn(),
     },
     timelineEvent: {
       create: vi.fn(),
@@ -27,7 +28,7 @@ vi.mock("@/lib/github-app", () => ({
 }))
 
 import prisma from "@/lib/prisma"
-import { createTicket, updateTicketStatus, appendTimelineEvent } from "@/lib/tickets"
+import { createTicket, updateTicketStatus, appendTimelineEvent, reissueGitHubIssue } from "@/lib/tickets"
 import { sendTicketReceipt } from "@/lib/email"
 import { isGitHubAppConfigured } from "@/lib/github-app"
 
@@ -398,5 +399,73 @@ describe("appendTimelineEvent", () => {
         data: expect.objectContaining({ public: false }),
       })
     )
+  })
+})
+
+describe("reissueGitHubIssue", () => {
+  const baseTicket = {
+    id: "ticket-reissue",
+    publicId: "TD-0012",
+    subject: "Reissue test",
+    body: "Body",
+    screenshots: [],
+    submitterEmail: "user@example.com",
+    product: { repoOwner: "zenithventure", repoName: "tinydesk", defaultAssignee: null },
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns alreadyExists=true and skips creation when issueUrl is already set", async () => {
+    const ticket = { ...baseTicket, issueUrl: "https://github.com/zenithventure/tinydesk/issues/99" }
+    const result = await reissueGitHubIssue(ticket)
+
+    expect(result.alreadyExists).toBe(true)
+    expect(result.issueUrl).toBe("https://github.com/zenithventure/tinydesk/issues/99")
+
+    const { createGitHubIssue } = await import("@/lib/github-app")
+    expect(createGitHubIssue).not.toHaveBeenCalled()
+  })
+
+  it("creates a GitHub issue and returns issueUrl when none exists", async () => {
+    vi.mocked(isGitHubAppConfigured).mockReturnValue(true)
+    vi.mocked(prisma.ticket.update).mockResolvedValue({} as any)
+    vi.mocked(prisma.ticket.findUnique).mockResolvedValue({
+      issueUrl: "https://github.com/zenithventure/tinydesk/issues/50",
+    } as any)
+    vi.mocked(prisma.timelineEvent.create).mockResolvedValue({} as any)
+
+    const { createGitHubIssue } = await import("@/lib/github-app")
+    vi.mocked(createGitHubIssue).mockResolvedValue({
+      number: 50,
+      html_url: "https://github.com/zenithventure/tinydesk/issues/50",
+    })
+
+    const result = await reissueGitHubIssue({ ...baseTicket, issueUrl: null })
+
+    expect(result.alreadyExists).toBe(false)
+    expect(result.issueUrl).toBe("https://github.com/zenithventure/tinydesk/issues/50")
+    expect(createGitHubIssue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: "zenithventure",
+        repo: "tinydesk",
+        title: "[TD-0012] Reissue test",
+      })
+    )
+  })
+
+  it("returns issueUrl=undefined when GitHub issue creation fails", async () => {
+    vi.mocked(isGitHubAppConfigured).mockReturnValue(true)
+    vi.mocked(prisma.ticket.findUnique).mockResolvedValue({ issueUrl: null } as any)
+    vi.mocked(prisma.timelineEvent.create).mockResolvedValue({} as any)
+
+    const { createGitHubIssue } = await import("@/lib/github-app")
+    vi.mocked(createGitHubIssue).mockRejectedValue(new Error("GitHub API down"))
+
+    const result = await reissueGitHubIssue({ ...baseTicket, issueUrl: null })
+
+    expect(result.alreadyExists).toBe(false)
+    expect(result.issueUrl).toBeUndefined()
   })
 })

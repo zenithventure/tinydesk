@@ -98,6 +98,31 @@ export async function updateTicketStatus(
   return ticket
 }
 
+/**
+ * Re-trigger GitHub issue creation for a ticket that missed it on initial
+ * creation (e.g. the GitHub App was not yet configured, or the API call
+ * failed transiently).  Safe to call multiple times — returns early if the
+ * ticket already has a linked issue.
+ */
+export async function reissueGitHubIssue(ticket: {
+  id: string
+  publicId: string
+  subject: string
+  body: string
+  screenshots: any
+  submitterEmail: string
+  issueUrl: string | null
+  product: { repoOwner: string | null; repoName: string | null; defaultAssignee: string | null }
+}): Promise<{ alreadyExists: boolean; issueUrl?: string }> {
+  if (ticket.issueUrl) {
+    // Issue already linked — don't create a duplicate
+    return { alreadyExists: true, issueUrl: ticket.issueUrl }
+  }
+  await autoCreateGitHubIssue(ticket)
+  const updated = await prisma.ticket.findUnique({ where: { id: ticket.id }, select: { issueUrl: true } })
+  return { alreadyExists: false, issueUrl: updated?.issueUrl ?? undefined }
+}
+
 async function autoCreateGitHubIssue(ticket: {
   id: string
   publicId: string
