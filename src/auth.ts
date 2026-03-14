@@ -23,12 +23,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               email: profile.email,
               name: profile.name ?? null,
               image: (profile as any).picture ?? null,
-              role: "ADMIN",
+              // New users default to VIEWER; grant ADMIN/product-owner access explicitly.
+              role: "VIEWER",
             },
           })
         }
         token.userId = user.id
         token.role = user.role
+
+        // Fetch the product IDs this user owns so we can gate visibility client-side.
+        const owned = await prisma.productOwner.findMany({
+          where: { userId: user.id },
+          select: { productId: true },
+        })
+        token.ownedProductIds = owned.map((o) => o.productId)
       }
       return token
     },
@@ -36,6 +44,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.userId) {
         session.user.id = token.userId as string
         session.user.role = token.role as string
+        session.user.ownedProductIds = (token.ownedProductIds as string[]) ?? []
       }
       return session
     },
