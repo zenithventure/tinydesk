@@ -70,6 +70,25 @@ describe("GitHub webhook handler logic", () => {
       })
       expect(status).toBeNull()
     })
+
+    // TD-0005: merged PR with no "Closes #N" in body should still map to MERGED
+    it("maps merged PR to MERGED even when body has no issue reference", () => {
+      const status = mapEventToStatus("pull_request", "closed", {
+        pull_request: { number: 10, merged: true, body: "chore: update deps" },
+      })
+      expect(status?.status).toBe("MERGED")
+    })
+
+    // TD-0005: extractIssueNumber returns null for PR bodies without issue refs
+    it("extractIssueNumber returns null for PR body without issue reference", () => {
+      expect(extractIssueNumber("chore: update deps\n\nTinyDesk-Ticket: TD-0005")).toBeNull()
+    })
+
+    // TD-0005: extractTicketId works on PR bodies with TinyDesk-Ticket references
+    it("extracts TinyDesk ticket ID from PR body as fallback lookup key", () => {
+      const body = "fix: some change\n\nTinyDesk-Ticket: TD-0005\nStatus page: https://example.com"
+      expect(extractTicketId(body)).toBe("TD-0005")
+    })
   })
 
   describe("review event processing", () => {
