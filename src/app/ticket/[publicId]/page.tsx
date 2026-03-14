@@ -9,6 +9,7 @@ import { Timeline } from "@/components/timeline"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LastUpdated } from "@/components/last-updated"
 import { useAutoRefresh } from "@/hooks/use-auto-refresh"
+import { LocalDateTime } from "@/components/local-date-time"
 import type { TicketPublic, TimelineEventPublic } from "@/types"
 
 const POLL_INTERVAL = 20_000 // 20 seconds
@@ -118,7 +119,7 @@ export default function PublicTicketPage() {
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{ticket.subject}</h1>
         <p className="text-sm text-gray-500 mb-6">
-          {ticket.productName} &middot; Submitted {new Date(ticket.createdAt).toLocaleDateString()}
+          {ticket.product.name} &middot; Submitted <LocalDateTime value={ticket.createdAt.toISOString()} />
         </p>
 
         {/* Pipeline Progress */}

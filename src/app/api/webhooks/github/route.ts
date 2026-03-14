@@ -80,21 +80,10 @@ export async function POST(req: NextRequest) {
 
     // Handle PR events
     if (event === "pull_request") {
-      const issueNumber = extractIssueNumber(payload.pull_request?.body)
-      if (!issueNumber) {
-        return NextResponse.json({ ok: true, message: "No issue reference in PR" })
-      }
-
-      // Find ticket linked to this issue number for this product
-      const ticket = await prisma.ticket.findFirst({
-        where: {
-          productId: product.id,
-          issueNumber,
-        },
-      })
+      const ticket = await findTicketForPR(product.id, payload)
 
       if (!ticket) {
-        return NextResponse.json({ ok: true, message: "No ticket linked to this issue" })
+        return NextResponse.json({ ok: true, message: "No ticket linked to this PR" })
       }
 
       const statusMapping = mapEventToStatus(event, payload.action, payload)
@@ -102,7 +91,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true, message: "Unhandled action" })
       }
 
-      // Link PR to ticket
+      // Link PR to ticket on open
       if (payload.action === "opened") {
         await prisma.ticket.update({
           where: { id: ticket.id },
@@ -161,4 +150,53 @@ export async function POST(req: NextRequest) {
     console.error("[webhooks/github] Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
+}
+
+/**
+ * Find the TinyDesk ticket linked to an incoming pull_request webhook event.
+ *
+ * Strategy (in priority order):
+ *  1. By prNumber from the webhook payload — reliable for all actions because
+ *     prNumber is stored on the ticket when the PR is opened.
+ *  2. By issueNumber extracted from the PR body (e.g. "Closes #N") — covers
+ *     cases where the PR was opened before TinyDesk stored the prNumber.
+ *  3. By publicId extracted directly from the PR body
+ *     (e.g. "TinyDesk-Ticket: TD-XXXX") — covers PRs that reference the
+ *     ticket without going through a GitHub issue.
+ *
+ * This multi-strategy lookup fixes TD-0005: previously only strategy #2 was
+ * used, so a merged PR whose body lacked "Closes/Fixes/Resolves #N" would
+ * silently fail to update the ticket status.
+ */
+async function findTicketForPR(productId: string, payload: any) {
+  const prNumber: number | undefined = payload.pull_request?.number
+  const prBody: string | null = payload.pull_request?.body ?? null
+
+  // 1. Look up by prNumber stored on the ticket (most reliable path)
+  if (prNumber) {
+    const ticket = await prisma.ticket.findFirst({
+      where: { productId, prNumber },
+    })
+    if (ticket) return ticket
+  }
+
+  // 2. Look up by issueNumber extracted from PR body ("Closes #N")
+  const issueNumber = extractIssueNumber(prBody)
+  if (issueNumber) {
+    const ticket = await prisma.ticket.findFirst({
+      where: { productId, issueNumber },
+    })
+    if (ticket) return ticket
+  }
+
+  // 3. Look up by TinyDesk ticket ID embedded directly in PR body
+  const ticketPublicId = extractTicketId(prBody)
+  if (ticketPublicId) {
+    const ticket = await prisma.ticket.findFirst({
+      where: { productId, publicId: ticketPublicId },
+    })
+    if (ticket) return ticket
+  }
+
+  return null
 }

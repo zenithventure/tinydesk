@@ -43,7 +43,10 @@ export function TicketTable({ tickets }: TicketTableProps) {
                 <TicketStatusBadge status={ticket.status} />
               </td>
               <td className="py-3 text-gray-400 text-xs hidden lg:table-cell">
-                {new Date(ticket.createdAt).toLocaleDateString()}
+                {new Date(ticket.createdAt).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
               </td>
             </tr>
           ))}
