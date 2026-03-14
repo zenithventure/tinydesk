@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Ticket } from "lucide-react"
 import { TicketTable } from "@/components/ticket-table"
@@ -9,8 +9,12 @@ import { EmptyState } from "@/components/empty-state"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { LastUpdated } from "@/components/last-updated"
+import { useAutoRefresh } from "@/hooks/use-auto-refresh"
 import { STATUS_ORDER } from "@/lib/constants"
 import type { DashboardTicket, PaginatedResponse } from "@/types"
+
+const POLL_INTERVAL = 30_000 // 30 seconds
 
 const statusOptions = [
   { value: "", label: "All Statuses" },
@@ -22,13 +26,21 @@ export default function TicketListPage() {
   const searchParams = useSearchParams()
   const [data, setData] = useState<PaginatedResponse<DashboardTicket> | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const isFirstLoad = useRef(true)
 
   const page = parseInt(searchParams.get("page") || "1", 10)
   const status = searchParams.get("status") || ""
   const search = searchParams.get("search") || ""
 
-  const fetchTickets = useCallback(async () => {
-    setLoading(true)
+  const fetchTickets = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true)
+    } else {
+      setRefreshing(true)
+    }
+
     const params = new URLSearchParams()
     params.set("page", String(page))
     if (status) params.set("status", status)
@@ -38,16 +50,24 @@ export default function TicketListPage() {
       const res = await fetch(`/api/dashboard/tickets?${params}`)
       const json = await res.json()
       setData(json)
+      setLastUpdated(new Date())
     } catch {
       setData(null)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [page, status, search])
 
+  // Initial load + re-fetch when params change
   useEffect(() => {
-    fetchTickets()
+    isFirstLoad.current = true
+    fetchTickets(false)
+    isFirstLoad.current = false
   }, [fetchTickets])
+
+  // Background polling — silent refresh (no loading flash)
+  useAutoRefresh(() => fetchTickets(true), POLL_INTERVAL)
 
   function updateParams(updates: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString())
@@ -66,7 +86,10 @@ export default function TicketListPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Tickets</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Tickets</h1>
+        <LastUpdated timestamp={lastUpdated} refreshing={refreshing} />
+      </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex-1">

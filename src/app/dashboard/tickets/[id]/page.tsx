@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, ExternalLink, Flag } from "lucide-react"
@@ -11,8 +11,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { PipelineProgress } from "@/components/pipeline-progress"
 import { TicketStatusBadge } from "@/components/ticket-status-badge"
 import { Timeline } from "@/components/timeline"
+import { LastUpdated } from "@/components/last-updated"
+import { useAutoRefresh } from "@/hooks/use-auto-refresh"
 import { STATUS_ORDER } from "@/lib/constants"
 import type { TicketStatus, TimelineEventPublic } from "@/types"
+
+const POLL_INTERVAL = 20_000 // 20 seconds
 
 const statusOptions = STATUS_ORDER.map((s) => ({
   value: s,
@@ -44,42 +48,45 @@ export default function TicketDetailPage() {
   const [events, setEvents] = useState<TimelineEventPublic[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  useEffect(() => {
-    async function fetchTicket() {
-      try {
-        const res = await fetch(`/api/dashboard/tickets/${params.id}`)
-        if (res.status === 404) {
-          router.push("/dashboard/tickets")
-          return
-        }
-        // The dashboard API returns the ticket in the PATCH response format,
-        // but we need a dedicated GET. For now, use the paginated list and find by id
-        // Actually let's fetch via the internal API pattern
-        const data = await res.json()
-        setTicket(data)
-      } catch {
-        router.push("/dashboard/tickets")
-      } finally {
-        setLoading(false)
-      }
+  const fetchData = useCallback(async (silent = false) => {
+    if (silent) {
+      setRefreshing(true)
     }
-    fetchTicket()
+    try {
+      const res = await fetch(`/api/dashboard/tickets/${params.id}`)
+      if (res.status === 404) {
+        router.push("/dashboard/tickets")
+        return
+      }
+      const data = await res.json()
+      setTicket(data)
+
+      // Fetch events using publicId from fetched ticket
+      const eventsRes = await fetch(`/api/tickets/${data.publicId}/events`)
+      const eventsData = await eventsRes.json()
+      setEvents(eventsData)
+
+      setLastUpdated(new Date())
+    } catch {
+      if (!silent) router.push("/dashboard/tickets")
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }, [params.id, router])
 
+  // Initial load
   useEffect(() => {
-    if (!ticket) return
-    async function fetchEvents() {
-      try {
-        const res = await fetch(`/api/tickets/${ticket!.publicId}/events`)
-        const data = await res.json()
-        setEvents(data)
-      } catch {
-        // ignore
-      }
-    }
-    fetchEvents()
-  }, [ticket])
+    fetchData(false)
+  }, [fetchData])
+
+  // Background polling — skip if user is mid-update
+  useAutoRefresh(() => {
+    if (!updating) fetchData(true)
+  }, POLL_INTERVAL)
 
   async function handleStatusChange(newStatus: string) {
     if (!ticket || newStatus === ticket.status) return
@@ -97,6 +104,7 @@ export default function TicketDetailPage() {
         const eventsRes = await fetch(`/api/tickets/${ticket.publicId}/events`)
         const eventsData = await eventsRes.json()
         setEvents(eventsData)
+        setLastUpdated(new Date())
       }
     } finally {
       setUpdating(false)
@@ -113,6 +121,7 @@ export default function TicketDetailPage() {
     if (res.ok) {
       const updated = await res.json()
       setTicket(updated)
+      setLastUpdated(new Date())
     }
   }
 
@@ -130,9 +139,12 @@ export default function TicketDetailPage() {
 
   return (
     <div>
-      <Link href="/dashboard/tickets" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
-        <ArrowLeft className="w-4 h-4" /> Back to tickets
-      </Link>
+      <div className="flex items-center justify-between mb-4">
+        <Link href="/dashboard/tickets" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+          <ArrowLeft className="w-4 h-4" /> Back to tickets
+        </Link>
+        <LastUpdated timestamp={lastUpdated} refreshing={refreshing} />
+      </div>
 
       <div className="flex items-start justify-between mb-6">
         <div>

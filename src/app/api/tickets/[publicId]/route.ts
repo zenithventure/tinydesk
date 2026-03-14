@@ -20,6 +20,7 @@ export async function GET(
       subject: ticket.subject,
       status: ticket.status,
       productName: ticket.product.name,
+      screenshots: ticket.screenshots,
       createdAt: ticket.createdAt.toISOString(),
       updatedAt: ticket.updatedAt.toISOString(),
       issueUrl: ticket.issueUrl,
