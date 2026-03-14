@@ -14,6 +14,7 @@ import { Timeline } from "@/components/timeline"
 import { LastUpdated } from "@/components/last-updated"
 import { useAutoRefresh } from "@/hooks/use-auto-refresh"
 import { LocalDateTime } from "@/components/local-date-time"
+import { useAuth } from "@/lib/contexts/auth-context"
 import { STATUS_ORDER } from "@/lib/constants"
 import type { TicketStatus, TimelineEventPublic } from "@/types"
 
@@ -27,6 +28,7 @@ const statusOptions = STATUS_ORDER.map((s) => ({
 interface TicketDetail {
   id: string
   publicId: string
+  productId: string
   subject: string
   body: string
   submitterEmail: string
@@ -45,6 +47,7 @@ interface TicketDetail {
 export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { isAdmin, user } = useAuth()
   const [ticket, setTicket] = useState<TicketDetail | null>(null)
   const [events, setEvents] = useState<TimelineEventPublic[]>([])
   const [loading, setLoading] = useState(true)
@@ -161,6 +164,9 @@ export default function TicketDetailPage() {
 
   if (!ticket) return null
 
+  // Only admins and product owners (for this specific product) may change ticket status.
+  const canChangeStatus = isAdmin || (user?.ownedProductIds?.includes(ticket.productId) ?? false)
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -207,13 +213,23 @@ export default function TicketDetailPage() {
       {/* Actions */}
       <div className="bg-white rounded-xl border p-4 mb-6 flex items-center gap-4">
         <div className="flex-1">
-          <Select
-            label="Change Status"
-            options={statusOptions}
-            value={ticket.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            disabled={updating}
-          />
+          {canChangeStatus ? (
+            <Select
+              label="Change Status"
+              options={statusOptions}
+              value={ticket.status}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              disabled={updating}
+            />
+          ) : (
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-1">Status</p>
+              <div className="flex items-center gap-2">
+                <TicketStatusBadge status={ticket.status} />
+                <span className="text-xs text-gray-400">(read-only)</span>
+              </div>
+            </div>
+          )}
         </div>
         {!ticket.issueUrl && (
           <div className="flex flex-col items-end gap-1">
