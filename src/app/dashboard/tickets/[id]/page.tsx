@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, ExternalLink, Flag } from "lucide-react"
+import { ArrowLeft, ExternalLink, Flag, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { PipelineProgress } from "@/components/pipeline-progress"
 import { TicketStatusBadge } from "@/components/ticket-status-badge"
 import { Timeline } from "@/components/timeline"
+import { LocalDateTime } from "@/components/local-date-time"
 import { STATUS_ORDER } from "@/lib/constants"
 import type { TicketStatus, TimelineEventPublic } from "@/types"
 
@@ -145,6 +146,17 @@ export default function TicketDetailPage() {
           <p className="text-sm text-gray-500 mt-1">
             {ticket.product.name} &middot; {ticket.submitterEmail}
             {ticket.submitterName && ` (${ticket.submitterName})`}
+          </p>
+          <p className="text-xs text-gray-400 mt-1 flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              Created: <LocalDateTime value={ticket.createdAt} />
+            </span>
+            {ticket.updatedAt !== ticket.createdAt && (
+              <span className="flex items-center gap-1">
+                Updated: <LocalDateTime value={ticket.updatedAt} />
+              </span>
+            )}
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={toggleFlag}>
