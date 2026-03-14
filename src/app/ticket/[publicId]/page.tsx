@@ -1,42 +1,102 @@
+"use client"
+
+import { useEffect, useState, useCallback } from "react"
+import { useParams } from "next/navigation"
 import Link from "next/link"
-import { notFound } from "next/navigation"
-import prisma from "@/lib/prisma"
 import { PipelineProgress } from "@/components/pipeline-progress"
 import { TicketStatusBadge } from "@/components/ticket-status-badge"
 import { Timeline } from "@/components/timeline"
+import { Skeleton } from "@/components/ui/skeleton"
+import { LastUpdated } from "@/components/last-updated"
+import { useAutoRefresh } from "@/hooks/use-auto-refresh"
 import { LocalDateTime } from "@/components/local-date-time"
+import type { TicketPublic, TimelineEventPublic } from "@/types"
 
-interface PageProps {
-  params: { publicId: string }
+const POLL_INTERVAL = 20_000 // 20 seconds
+
+interface PublicTicketData extends TicketPublic {
+  screenshots?: string[] | null
 }
 
-export default async function PublicTicketPage({ params }: PageProps) {
-  const ticket = await prisma.ticket.findUnique({
-    where: { publicId: params.publicId },
-    include: {
-      product: { select: { name: true } },
-      timelineEvents: {
-        where: { public: true },
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          eventType: true,
-          actor: true,
-          summary: true,
-          createdAt: true,
-        },
-      },
-    },
-  })
+export default function PublicTicketPage() {
+  const params = useParams()
+  const publicId = params.publicId as string
 
-  if (!ticket) {
-    notFound()
+  const [ticket, setTicket] = useState<PublicTicketData | null>(null)
+  const [events, setEvents] = useState<TimelineEventPublic[]>([])
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  const fetchData = useCallback(async (silent = false) => {
+    if (silent) setRefreshing(true)
+    try {
+      const [ticketRes, eventsRes] = await Promise.all([
+        fetch(`/api/tickets/${publicId}`),
+        fetch(`/api/tickets/${publicId}/events`),
+      ])
+
+      if (ticketRes.status === 404) {
+        setNotFound(true)
+        return
+      }
+
+      const [ticketData, eventsData] = await Promise.all([
+        ticketRes.json(),
+        eventsRes.json(),
+      ])
+
+      setTicket(ticketData)
+      setEvents(eventsData)
+      setLastUpdated(new Date())
+    } catch {
+      // On silent refresh failures, keep stale data
+      if (!silent) setNotFound(true)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [publicId])
+
+  // Initial load
+  useEffect(() => {
+    fetchData(false)
+  }, [fetchData])
+
+  // Background polling
+  useAutoRefresh(() => fetchData(true), POLL_INTERVAL)
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <nav className="border-b bg-white">
+          <div className="max-w-3xl mx-auto px-6 h-14 flex items-center">
+            <Link href="/" className="text-lg font-bold text-emerald-600">
+              Tiny<span className="text-gray-900">Desk</span>
+            </Link>
+          </div>
+        </nav>
+        <div className="max-w-3xl mx-auto px-6 py-8 space-y-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-48" />
+        </div>
+      </div>
+    )
   }
 
-  const events = ticket.timelineEvents.map((e) => ({
-    ...e,
-    createdAt: e.createdAt.toISOString(),
-  }))
+  if (notFound || !ticket) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Ticket not found</h1>
+          <p className="text-gray-500">The ticket you&apos;re looking for doesn&apos;t exist.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -49,9 +109,12 @@ export default async function PublicTicketPage({ params }: PageProps) {
       </nav>
 
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-sm font-mono text-gray-500">{ticket.publicId}</span>
-          <TicketStatusBadge status={ticket.status} />
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-mono text-gray-500">{ticket.publicId}</span>
+            <TicketStatusBadge status={ticket.status} />
+          </div>
+          <LastUpdated timestamp={lastUpdated} refreshing={refreshing} />
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{ticket.subject}</h1>
