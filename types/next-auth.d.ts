@@ -8,6 +8,8 @@ declare module "next-auth" {
       email?: string | null
       image?: string | null
       role?: string
+      /** Product IDs for which this user is a product owner. */
+      ownedProductIds?: string[]
     }
   }
 }
@@ -16,5 +18,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     userId?: string
     role?: string
+    /** Product IDs for which this user is a product owner. */
+    ownedProductIds?: string[]
   }
 }

@@ -39,6 +39,7 @@ const products = [
 ]
 
 async function main() {
+  // ── Products ──────────────────────────────────────────────────────────────
   for (const product of products) {
     const existing = await prisma.product.findUnique({
       where: { slug: product.slug },
@@ -58,7 +59,36 @@ async function main() {
       console.log(`  created: ${product.name}`)
     }
   }
-  // Print secrets for GitHub webhook configuration
+
+  // ── Example product owner ─────────────────────────────────────────────────
+  // Creates a demo user (role: VIEWER) and makes them the owner of TinyCal.
+  // In production, replace with real user emails and grant ownership via the DB.
+  const ownerEmail = process.env.SEED_OWNER_EMAIL ?? "owner@example.com"
+  const tinyCalProduct = await prisma.product.findUnique({ where: { slug: "tinycal" } })
+
+  if (tinyCalProduct) {
+    let ownerUser = await prisma.user.findUnique({ where: { email: ownerEmail } })
+    if (!ownerUser) {
+      ownerUser = await prisma.user.create({
+        data: { email: ownerEmail, name: "Demo Product Owner", role: "VIEWER" },
+      })
+      console.log(`  created demo product owner: ${ownerEmail}`)
+    }
+
+    const existingOwnership = await prisma.productOwner.findUnique({
+      where: { userId_productId: { userId: ownerUser.id, productId: tinyCalProduct.id } },
+    })
+    if (!existingOwnership) {
+      await prisma.productOwner.create({
+        data: { userId: ownerUser.id, productId: tinyCalProduct.id },
+      })
+      console.log(`  assigned ${ownerEmail} as product owner of TinyCal`)
+    } else {
+      console.log(`  skip: ${ownerEmail} already owns TinyCal`)
+    }
+  }
+
+  // ── Print webhook secrets ─────────────────────────────────────────────────
   console.log("\nWebhook secrets (use these in each repo's GitHub webhook settings):")
   console.log("Payload URL: https://tinydesk.zenithstudio.app/api/webhooks/github\n")
   const all = await prisma.product.findMany({ orderBy: { name: "asc" } })

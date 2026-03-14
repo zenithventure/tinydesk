@@ -30,28 +30,44 @@ enum NotificationStatus {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  image     String?
-  role      Role     @default(ADMIN)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String         @id @default(cuid())
+  name          String?
+  email         String         @unique
+  image         String?
+  role          Role           @default(VIEWER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  ownedProducts ProductOwner[]
 }
 
 model Product {
-  id               String   @id @default(cuid())
+  id               String         @id @default(cuid())
   name             String
-  slug             String   @unique
+  slug             String         @unique
   repoOwner        String?
   repoName         String?
   defaultAssignee  String?
   supportEmail     String?
   vercelProjectId  String?
   webhookSecret    String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
   tickets          Ticket[]
+  owners           ProductOwner[]
+}
+
+/// Join table: tracks which users are product owners of which products.
+model ProductOwner {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
 }
 
 model Ticket {
