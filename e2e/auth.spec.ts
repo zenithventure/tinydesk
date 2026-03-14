@@ -14,6 +14,12 @@ test.describe("Authentication", () => {
     expect(page.url()).toContain("/login")
   })
 
+  test("support page redirects to login", async ({ page }) => {
+    await page.goto("/dashboard/support")
+    await page.waitForURL(/\/login/)
+    expect(page.url()).toContain("/login")
+  })
+
   test("dashboard API returns 401 without auth", async ({ request }) => {
     const response = await request.get("/api/dashboard/tickets")
     expect(response.status()).toBe(401)
@@ -21,6 +27,18 @@ test.describe("Authentication", () => {
 
   test("dashboard products API returns 401 without auth", async ({ request }) => {
     const response = await request.get("/api/dashboard/products")
+    expect(response.status()).toBe(401)
+  })
+
+  test("dashboard ticket detail API returns 401 without auth", async ({ request }) => {
+    const response = await request.get("/api/dashboard/tickets/some-id")
+    expect(response.status()).toBe(401)
+  })
+
+  test("dashboard ticket update API returns 401 without auth", async ({ request }) => {
+    const response = await request.patch("/api/dashboard/tickets/some-id", {
+      data: { status: "CLOSED" },
+    })
     expect(response.status()).toBe(401)
   })
 })

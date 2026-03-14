@@ -62,6 +62,71 @@ describe("createTicketSchema", () => {
     })
     expect(result.success).toBe(true)
   })
+
+  it("accepts valid screenshots array", () => {
+    const result = createTicketSchema.safeParse({
+      productSlug: "tinycal",
+      submitterEmail: "user@example.com",
+      subject: "Bug",
+      body: "Details",
+      screenshots: [
+        "https://example.com/img1.png",
+        "https://example.com/img2.png",
+      ],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("allows empty screenshots array", () => {
+    const result = createTicketSchema.safeParse({
+      productSlug: "tinycal",
+      submitterEmail: "user@example.com",
+      subject: "Bug",
+      body: "Details",
+      screenshots: [],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects more than 3 screenshots", () => {
+    const result = createTicketSchema.safeParse({
+      productSlug: "tinycal",
+      submitterEmail: "user@example.com",
+      subject: "Bug",
+      body: "Details",
+      screenshots: [
+        "https://example.com/1.png",
+        "https://example.com/2.png",
+        "https://example.com/3.png",
+        "https://example.com/4.png",
+      ],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects non-URL strings in screenshots", () => {
+    const result = createTicketSchema.safeParse({
+      productSlug: "tinycal",
+      submitterEmail: "user@example.com",
+      subject: "Bug",
+      body: "Details",
+      screenshots: ["not-a-url"],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("allows omitting screenshots entirely", () => {
+    const result = createTicketSchema.safeParse({
+      productSlug: "tinycal",
+      submitterEmail: "user@example.com",
+      subject: "Bug",
+      body: "Details",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.screenshots).toBeUndefined()
+    }
+  })
 })
 
 describe("updateTicketSchema", () => {
@@ -104,5 +169,14 @@ describe("createProductSchema", () => {
       slug: "tiny cal",
     })
     expect(result.success).toBe(false)
+  })
+
+  it("accepts optional defaultAssignee", () => {
+    const result = createProductSchema.safeParse({
+      name: "TinyCal",
+      slug: "tinycal",
+      defaultAssignee: "z-team-alpha",
+    })
+    expect(result.success).toBe(true)
   })
 })

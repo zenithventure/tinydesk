@@ -18,6 +18,11 @@ vi.mock("@/lib/email", () => ({
   sendStatusUpdate: vi.fn(),
 }))
 
+vi.mock("@/lib/github-app", () => ({
+  createGitHubIssue: vi.fn(),
+  isGitHubAppConfigured: vi.fn().mockReturnValue(false),
+}))
+
 import prisma from "@/lib/prisma"
 import { createTicketSchema } from "@/lib/validators"
 
@@ -39,6 +44,44 @@ describe("POST /api/tickets logic", () => {
       body: "Details",
     })
     expect(result.success).toBe(true)
+  })
+
+  it("validates payload with screenshots", () => {
+    const result = createTicketSchema.safeParse({
+      productSlug: "tinycal",
+      submitterEmail: "user@example.com",
+      subject: "Bug",
+      body: "Details",
+      screenshots: ["https://blob.vercel.com/screenshot1.png"],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects payload with too many screenshots", () => {
+    const result = createTicketSchema.safeParse({
+      productSlug: "tinycal",
+      submitterEmail: "user@example.com",
+      subject: "Bug",
+      body: "Details",
+      screenshots: [
+        "https://example.com/1.png",
+        "https://example.com/2.png",
+        "https://example.com/3.png",
+        "https://example.com/4.png",
+      ],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects payload with invalid screenshot URLs", () => {
+    const result = createTicketSchema.safeParse({
+      productSlug: "tinycal",
+      submitterEmail: "user@example.com",
+      subject: "Bug",
+      body: "Details",
+      screenshots: ["not-a-url"],
+    })
+    expect(result.success).toBe(false)
   })
 })
 
