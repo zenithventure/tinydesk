@@ -119,7 +119,7 @@ export default function PublicTicketPage() {
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{ticket.subject}</h1>
         <p className="text-sm text-gray-500 mb-6">
-          {ticket.product.name} &middot; Submitted <LocalDateTime value={ticket.createdAt.toISOString()} />
+          {ticket.productName} &middot; Submitted <LocalDateTime value={ticket.createdAt} />
         </p>
 
         {/* Pipeline Progress */}

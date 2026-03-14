@@ -32,11 +32,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = user.role
 
         // Fetch the product IDs this user owns so we can gate visibility client-side.
-        const owned = await prisma.productOwner.findMany({
-          where: { userId: user.id },
-          select: { productId: true },
-        })
-        token.ownedProductIds = owned.map((o) => o.productId)
+        // Wrapped in try/catch: the ProductOwner table may not exist yet if the
+        // migration hasn't been applied (avoids crashing auth on older DB schemas).
+        try {
+          const owned = await prisma.productOwner.findMany({
+            where: { userId: user.id },
+            select: { productId: true },
+          })
+          token.ownedProductIds = owned.map((o) => o.productId)
+        } catch {
+          token.ownedProductIds = []
+        }
       }
       return token
     },
