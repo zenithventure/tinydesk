@@ -45,6 +45,7 @@ model Product {
   slug             String   @unique
   repoOwner        String?
   repoName         String?
+  defaultAssignee  String?
   supportEmail     String?
   vercelProjectId  String?
   webhookSecret    String?

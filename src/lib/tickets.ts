@@ -1,6 +1,7 @@
 import prisma from "./prisma"
-import { generatePublicId } from "./utils"
+import { generatePublicId, absoluteUrl } from "./utils"
 import { sendTicketReceipt, sendStatusUpdate } from "./email"
+import { createGitHubIssue, isGitHubAppConfigured } from "./github-app"
 import { STATUS_CONFIG, EVENT_TYPES } from "./constants"
 import type { TicketStatus } from "@prisma/client"
 
@@ -40,6 +41,13 @@ export async function createTicket(input: {
   // Send receipt email (fire-and-forget)
   sendTicketReceipt(input.submitterEmail, publicId, input.subject)
 
+  // Auto-create GitHub issue if the product has a linked repo
+  if (ticket.product.repoOwner && ticket.product.repoName && isGitHubAppConfigured()) {
+    autoCreateGitHubIssue(ticket).catch((err) => {
+      console.error("[tickets] Failed to auto-create GitHub issue:", err)
+    })
+  }
+
   return ticket
 }
 
@@ -75,6 +83,70 @@ export async function updateTicketStatus(
   )
 
   return ticket
+}
+
+async function autoCreateGitHubIssue(ticket: {
+  id: string
+  publicId: string
+  subject: string
+  body: string
+  submitterEmail: string
+  product: { repoOwner: string | null; repoName: string | null; defaultAssignee: string | null }
+}) {
+  const { repoOwner, repoName, defaultAssignee } = ticket.product
+  if (!repoOwner || !repoName) return
+
+  const statusUrl = absoluteUrl(`/ticket/${ticket.publicId}`)
+  const issueBody = [
+    `**${ticket.subject}**`,
+    "",
+    ticket.body,
+    "",
+    "---",
+    `TinyDesk-Ticket: ${ticket.publicId}`,
+    `Submitted by: ${ticket.submitterEmail}`,
+    `Status page: ${statusUrl}`,
+  ].join("\n")
+
+  try {
+    const issue = await createGitHubIssue({
+      owner: repoOwner,
+      repo: repoName,
+      title: `[${ticket.publicId}] ${ticket.subject}`,
+      body: issueBody,
+      assignee: defaultAssignee || undefined,
+    })
+
+    // Link the issue to the ticket
+    await prisma.ticket.update({
+      where: { id: ticket.id },
+      data: {
+        issueNumber: issue.number,
+        issueUrl: issue.html_url,
+        status: defaultAssignee ? "FIX_IN_PROGRESS" : "ISSUE_CREATED",
+      },
+    })
+
+    await appendTimelineEvent({
+      ticketId: ticket.id,
+      eventType: EVENT_TYPES.ISSUE_LINKED,
+      summary: `GitHub issue #${issue.number} created automatically`,
+      actor: "tinydesk-bot",
+      public: true,
+    })
+
+    if (defaultAssignee) {
+      await appendTimelineEvent({
+        ticketId: ticket.id,
+        eventType: "issue_assigned",
+        summary: `Issue assigned to @${defaultAssignee}`,
+        actor: "tinydesk-bot",
+        public: true,
+      })
+    }
+  } catch (err) {
+    console.error("[tickets] autoCreateGitHubIssue error:", err)
+  }
 }
 
 export async function appendTimelineEvent(input: {

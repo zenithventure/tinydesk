@@ -37,6 +37,7 @@ export const createProductSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
   repoOwner: z.string().optional(),
   repoName: z.string().optional(),
+  defaultAssignee: z.string().optional(),
   supportEmail: z.string().email().optional().or(z.literal("")),
   webhookSecret: z.string().optional(),
 })

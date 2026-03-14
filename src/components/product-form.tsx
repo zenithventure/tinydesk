@@ -17,6 +17,7 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
     slug: "",
     repoOwner: "",
     repoName: "",
+    defaultAssignee: "",
     supportEmail: "",
     webhookSecret: "",
   })
@@ -92,6 +93,14 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
           onChange={(e) => setFormData({ ...formData, repoName: e.target.value })}
         />
       </div>
+
+      <Input
+        id="defaultAssignee"
+        label="Default Assignee (optional)"
+        placeholder="GitHub username, e.g. szewong"
+        value={formData.defaultAssignee}
+        onChange={(e) => setFormData({ ...formData, defaultAssignee: e.target.value })}
+      />
 
       <Input
         id="supportEmail"

@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
         slug: parsed.data.slug,
         repoOwner: parsed.data.repoOwner || null,
         repoName: parsed.data.repoName || null,
+        defaultAssignee: parsed.data.defaultAssignee || null,
         supportEmail: parsed.data.supportEmail || null,
         webhookSecret: parsed.data.webhookSecret || null,
       },
