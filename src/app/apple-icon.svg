@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <!-- Rounded square background in TinyDesk indigo -->
+  <rect width="180" height="180" rx="40" fill="#6366f1"/>
+  <!-- White "T" lettermark -->
+  <!-- Horizontal bar -->
+  <rect x="28" y="46" width="124" height="30" rx="8" fill="white"/>
+  <!-- Vertical stem -->
+  <rect x="75" y="70" width="30" height="78" rx="8" fill="white"/>
+</svg>
