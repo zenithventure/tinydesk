@@ -352,6 +352,111 @@ describe("updateTicketStatus", () => {
       "PR merged"
     )
   })
+
+  // TD-0014: MERGED is the final resolution state
+  describe("TD-0014: auto-resolve on MERGED", () => {
+    it("auto-transitions to CLOSED when status reaches MERGED", async () => {
+      // Both MERGED and the subsequent CLOSED update will call prisma.ticket.update
+      vi.mocked(prisma.ticket.update).mockResolvedValue({
+        id: "ticket-merged",
+        publicId: "TD-0001",
+        submitterEmail: "user@example.com",
+        subject: "Bug fix",
+        status: "MERGED",
+        product: { name: "TinyCal" },
+      } as any)
+      vi.mocked(prisma.timelineEvent.create).mockResolvedValue({} as any)
+
+      await updateTicketStatus("ticket-merged", "MERGED", {
+        actor: "dev",
+        summary: "PR #42 merged",
+      })
+
+      // Should have called update twice: once for MERGED, once for the auto-close CLOSED
+      expect(prisma.ticket.update).toHaveBeenCalledTimes(2)
+      expect(prisma.ticket.update).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ data: expect.objectContaining({ status: "MERGED" }) })
+      )
+      expect(prisma.ticket.update).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ data: expect.objectContaining({ status: "CLOSED" }) })
+      )
+    })
+
+    it("sends exactly one email notification (for MERGED, not for the auto-close)", async () => {
+      vi.mocked(prisma.ticket.update).mockResolvedValue({
+        id: "ticket-merged",
+        publicId: "TD-0001",
+        submitterEmail: "user@example.com",
+        subject: "Bug fix",
+        status: "MERGED",
+        product: { name: "TinyCal" },
+      } as any)
+      vi.mocked(prisma.timelineEvent.create).mockResolvedValue({} as any)
+
+      await updateTicketStatus("ticket-merged", "MERGED", {
+        actor: "dev",
+        summary: "PR #42 merged",
+      })
+
+      const { sendStatusUpdate } = await import("@/lib/email")
+      // Only one email: for MERGED. The auto-close CLOSED transition is silent.
+      expect(sendStatusUpdate).toHaveBeenCalledTimes(1)
+      expect(sendStatusUpdate).toHaveBeenCalledWith(
+        "user@example.com",
+        "TD-0001",
+        "Bug fix",
+        "Merged",
+        "PR #42 merged"
+      )
+    })
+
+    it("records a timeline event for both MERGED and the auto-close CLOSED", async () => {
+      vi.mocked(prisma.ticket.update).mockResolvedValue({
+        id: "ticket-merged",
+        publicId: "TD-0001",
+        submitterEmail: "user@example.com",
+        subject: "Bug fix",
+        status: "MERGED",
+        product: { name: "TinyCal" },
+      } as any)
+      vi.mocked(prisma.timelineEvent.create).mockResolvedValue({} as any)
+
+      await updateTicketStatus("ticket-merged", "MERGED", {
+        actor: "dev",
+        summary: "PR #42 merged",
+      })
+
+      // Two timeline events: one for MERGED, one for auto-close CLOSED
+      expect(prisma.timelineEvent.create).toHaveBeenCalledTimes(2)
+      const summaries = vi
+        .mocked(prisma.timelineEvent.create)
+        .mock.calls.map((call) => call[0].data.summary)
+      expect(summaries).toContain("PR #42 merged")
+      expect(summaries).toContain("Ticket resolved: fix has been merged")
+    })
+
+    it("does NOT auto-close for non-MERGED status transitions", async () => {
+      vi.mocked(prisma.ticket.update).mockResolvedValue({
+        id: "ticket-1",
+        publicId: "TD-0001",
+        submitterEmail: "user@example.com",
+        subject: "Test",
+        status: "PR_OPEN",
+        product: { name: "TinyCal" },
+      } as any)
+      vi.mocked(prisma.timelineEvent.create).mockResolvedValue({} as any)
+
+      await updateTicketStatus("ticket-1", "PR_OPEN", {
+        actor: "dev",
+        summary: "PR opened",
+      })
+
+      // Only one DB update — no auto-transition
+      expect(prisma.ticket.update).toHaveBeenCalledTimes(1)
+    })
+  })
 })
 
 describe("appendTimelineEvent", () => {

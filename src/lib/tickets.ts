@@ -67,7 +67,19 @@ export async function createTicket(input: {
 export async function updateTicketStatus(
   ticketId: string,
   newStatus: TicketStatus,
-  options?: { actor?: string; summary?: string; eventType?: string; payload?: any }
+  options?: {
+    actor?: string
+    summary?: string
+    eventType?: string
+    payload?: any
+    /**
+     * When true, suppresses the email notification to the submitter.
+     * Used internally for auto-transitions that follow a user-visible status
+     * change (e.g. the CLOSED auto-transition after MERGED) so the submitter
+     * doesn't receive a redundant second email.
+     */
+    skipNotification?: boolean
+  }
 ) {
   const ticket = await prisma.ticket.update({
     where: { id: ticketId },
@@ -86,14 +98,31 @@ export async function updateTicketStatus(
     public: true,
   })
 
-  // Notify submitter
-  sendStatusUpdate(
-    ticket.submitterEmail,
-    ticket.publicId,
-    ticket.subject,
-    STATUS_CONFIG[newStatus].label,
-    summary
-  )
+  // Notify submitter (unless suppressed for internal auto-transitions)
+  if (!options?.skipNotification) {
+    sendStatusUpdate(
+      ticket.submitterEmail,
+      ticket.publicId,
+      ticket.subject,
+      STATUS_CONFIG[newStatus].label,
+      summary
+    )
+  }
+
+  // TD-0014: Auto-resolve ticket when it reaches MERGED state.
+  // Since deployment tracking is not yet implemented, MERGED is treated as
+  // the final resolution point. We silently transition to CLOSED so the
+  // ticket is definitively resolved without requiring a manual DEPLOYED →
+  // CLOSED progression. The MERGED notification above already informs the
+  // submitter that their fix has landed; no second email is sent.
+  if (newStatus === "MERGED") {
+    await updateTicketStatus(ticketId, "CLOSED", {
+      eventType: EVENT_TYPES.STATUS_CHANGED,
+      summary: "Ticket resolved: fix has been merged",
+      actor: options?.actor,
+      skipNotification: true,
+    })
+  }
 
   return ticket
 }
