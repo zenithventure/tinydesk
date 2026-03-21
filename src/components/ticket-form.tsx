@@ -15,7 +15,7 @@ interface TicketFormProps {
 const MAX_SCREENSHOTS = 3
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const MAX_SUBJECT_LENGTH = 200
-const MAX_BODY_LENGTH = 5000
+const MAX_BODY_LENGTH = 10000
 
 export function TicketForm({ products, onSuccess }: TicketFormProps) {
   const [loading, setLoading] = useState(false)

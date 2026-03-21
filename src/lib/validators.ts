@@ -5,7 +5,7 @@ export const createTicketSchema = z.object({
   submitterEmail: z.string().email("Valid email is required"),
   submitterName: z.string().optional(),
   subject: z.string().min(1, "Subject is required").max(200, "Subject must be 200 characters or fewer"),
-  body: z.string().min(1, "Description is required").max(5000, "Description must be 5,000 characters or fewer"),
+  body: z.string().min(1, "Description is required").max(10000, "Description must be 10,000 characters or fewer"),
   screenshots: z.array(z.string().url()).max(3, "Maximum 3 screenshots").optional(),
 })
 
