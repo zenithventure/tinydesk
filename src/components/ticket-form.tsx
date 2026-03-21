@@ -14,6 +14,8 @@ interface TicketFormProps {
 
 const MAX_SCREENSHOTS = 3
 const MAX_FILE_SIZE = 5 * 1024 * 1024
+const MAX_SUBJECT_LENGTH = 200
+const MAX_BODY_LENGTH = 5000
 
 export function TicketForm({ products, onSuccess }: TicketFormProps) {
   const [loading, setLoading] = useState(false)
@@ -145,24 +147,40 @@ export function TicketForm({ products, onSuccess }: TicketFormProps) {
         onChange={(e) => setFormData({ ...formData, submitterName: e.target.value })}
       />
 
-      <Input
-        id="subject"
-        label="Subject"
-        required
-        placeholder="Brief summary of the issue"
-        value={formData.subject}
-        onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-      />
+      <div>
+        <Input
+          id="subject"
+          label="Subject"
+          required
+          maxLength={MAX_SUBJECT_LENGTH}
+          placeholder="Brief summary of the issue"
+          value={formData.subject}
+          onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+        />
+        {formData.subject.length > MAX_SUBJECT_LENGTH * 0.9 && (
+          <p className={`text-xs mt-1 ${formData.subject.length >= MAX_SUBJECT_LENGTH ? "text-red-600" : "text-gray-500"}`}>
+            {formData.subject.length}/{MAX_SUBJECT_LENGTH} characters
+          </p>
+        )}
+      </div>
 
-      <Textarea
-        id="body"
-        label="Description"
-        required
-        rows={5}
-        placeholder="Describe the issue in detail..."
-        value={formData.body}
-        onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-      />
+      <div>
+        <Textarea
+          id="body"
+          label="Description"
+          required
+          rows={5}
+          maxLength={MAX_BODY_LENGTH}
+          placeholder="Describe the issue in detail..."
+          value={formData.body}
+          onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+        />
+        {formData.body.length > MAX_BODY_LENGTH * 0.9 && (
+          <p className={`text-xs mt-1 ${formData.body.length >= MAX_BODY_LENGTH ? "text-red-600" : "text-gray-500"}`}>
+            {formData.body.length}/{MAX_BODY_LENGTH} characters
+          </p>
+        )}
+      </div>
 
       {/* Screenshots */}
       <div>

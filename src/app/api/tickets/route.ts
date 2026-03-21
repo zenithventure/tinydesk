@@ -9,8 +9,12 @@ export async function POST(req: NextRequest) {
     const parsed = createTicketSchema.safeParse(body)
 
     if (!parsed.success) {
+      const fieldErrors = parsed.error.flatten().fieldErrors
+      const messages = Object.entries(fieldErrors)
+        .map(([field, errors]) => `${field}: ${errors?.join(", ")}`)
+        .join("; ")
       return NextResponse.json(
-        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+        { error: messages || "Validation failed", details: fieldErrors },
         { status: 400 }
       )
     }
