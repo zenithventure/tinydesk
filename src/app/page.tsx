@@ -168,9 +168,10 @@ export default function LandingPage() {
             </div>
             <div className="p-6 grid md:grid-cols-2 gap-6 text-sm font-mono">
               {/* Request */}
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <div className="text-gray-500 text-xs uppercase tracking-wide mb-3">Request body</div>
-                <pre className="text-gray-100 leading-6 whitespace-pre">{`{
+                <div className="overflow-x-auto rounded">
+                  <pre className="text-gray-100 leading-6 whitespace-pre">{`{
   "productSlug": "my-saas-app",
   "submitterEmail": "agent@example.com",
   "submitterName": "AI Agent v2",
@@ -180,6 +181,7 @@ export default function LandingPage() {
     "https://cdn.example.com/bug-01.png"
   ]
 }`}</pre>
+                </div>
                 <div className="mt-4 space-y-1.5 text-xs">
                   <div className="flex gap-2">
                     <span className="text-red-400">required</span>
@@ -192,13 +194,15 @@ export default function LandingPage() {
                 </div>
               </div>
               {/* Response */}
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <div className="text-gray-500 text-xs uppercase tracking-wide mb-3">Response <span className="text-emerald-400">201 Created</span></div>
-                <pre className="text-gray-100 leading-6 whitespace-pre">{`{
+                <div className="overflow-x-auto rounded">
+                  <pre className="text-gray-100 leading-6 whitespace-pre">{`{
   "publicId": "TK-00042",
   "status": "RECEIVED",
   "createdAt": "2026-03-24T08:00:00.000Z"
 }`}</pre>
+                </div>
                 <div className="mt-4 space-y-1.5 text-xs text-gray-400">
                   <div>• <span className="text-blue-300">publicId</span> — use this to track progress</div>
                   <div>• <span className="text-blue-300">status</span> — initial status is always <span className="text-emerald-400">RECEIVED</span></div>
