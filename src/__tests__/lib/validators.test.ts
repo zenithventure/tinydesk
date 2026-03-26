@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { createTicketSchema, updateTicketSchema, createProductSchema, updateUserSchema } from "@/lib/validators"
+import { createTicketSchema, updateTicketSchema, createProductSchema, updateProductSchema, updateUserSchema } from "@/lib/validators"
 
 describe("createTicketSchema", () => {
   it("validates a correct ticket", () => {
@@ -176,6 +176,75 @@ describe("createProductSchema", () => {
       name: "TinyCal",
       slug: "tinycal",
       defaultAssignee: "z-team-alpha",
+    })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe("updateProductSchema", () => {
+  it("accepts empty object (all fields optional)", () => {
+    const result = updateProductSchema.safeParse({})
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts name only", () => {
+    const result = updateProductSchema.safeParse({ name: "New Name" })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects empty name", () => {
+    const result = updateProductSchema.safeParse({ name: "" })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects name over 100 chars", () => {
+    const result = updateProductSchema.safeParse({ name: "x".repeat(101) })
+    expect(result.success).toBe(false)
+  })
+
+  it("accepts defaultAssignee", () => {
+    const result = updateProductSchema.safeParse({ defaultAssignee: "szewong" })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts empty defaultAssignee (to clear it)", () => {
+    const result = updateProductSchema.safeParse({ defaultAssignee: "" })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts valid supportEmail", () => {
+    const result = updateProductSchema.safeParse({ supportEmail: "support@example.com" })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts empty supportEmail (to clear it)", () => {
+    const result = updateProductSchema.safeParse({ supportEmail: "" })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects invalid supportEmail", () => {
+    const result = updateProductSchema.safeParse({ supportEmail: "not-email" })
+    expect(result.success).toBe(false)
+  })
+
+  it("accepts repoOwner and repoName", () => {
+    const result = updateProductSchema.safeParse({ repoOwner: "myorg", repoName: "myrepo" })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts webhookSecret", () => {
+    const result = updateProductSchema.safeParse({ webhookSecret: "whsec_abc123" })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts all fields together", () => {
+    const result = updateProductSchema.safeParse({
+      name: "Updated Product",
+      repoOwner: "myorg",
+      repoName: "myrepo",
+      defaultAssignee: "szewong",
+      supportEmail: "help@example.com",
+      webhookSecret: "whsec_123",
     })
     expect(result.success).toBe(true)
   })
