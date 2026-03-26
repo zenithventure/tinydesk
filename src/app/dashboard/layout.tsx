@@ -3,14 +3,15 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Ticket, Settings, LayoutDashboard, LogOut, Menu, X, Package, PenSquare } from "lucide-react"
+import { Ticket, Settings, LayoutDashboard, LogOut, Menu, X, Package, PenSquare, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/contexts/auth-context"
 
 const ALL_NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
-  { href: "/dashboard/products", label: "Products", icon: Package },
+  { href: "/dashboard/products", label: "Products", icon: Package, adminOrOwnerOnly: true },
+  { href: "/dashboard/users", label: "Users", icon: Users, adminOnly: true },
   { href: "/dashboard/support", label: "Submit Ticket", icon: PenSquare },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ]
@@ -20,9 +21,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
   const { user, isLoading, isAuthenticated, isAdmin, isProductOwner, logout } = useAuth()
 
-  const navItems = ALL_NAV_ITEMS.filter(
-    (item) => !item.adminOrOwnerOnly || isAdmin || isProductOwner
-  )
+  const navItems = ALL_NAV_ITEMS.filter((item) => {
+    if (item.adminOnly) return isAdmin
+    if (item.adminOrOwnerOnly) return isAdmin || isProductOwner
+    return true
+  })
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {

@@ -43,6 +43,11 @@ export const createProductSchema = z.object({
   webhookSecret: z.string().optional(),
 })
 
+export const updateUserSchema = z.object({
+  role: z.enum(["ADMIN", "VIEWER"]).optional(),
+  ownedProductIds: z.array(z.string().min(1)).optional(),
+})
+
 export const ticketListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),

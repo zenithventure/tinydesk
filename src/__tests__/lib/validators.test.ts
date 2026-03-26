@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { createTicketSchema, updateTicketSchema, createProductSchema } from "@/lib/validators"
+import { createTicketSchema, updateTicketSchema, createProductSchema, updateUserSchema } from "@/lib/validators"
 
 describe("createTicketSchema", () => {
   it("validates a correct ticket", () => {
@@ -177,6 +177,56 @@ describe("createProductSchema", () => {
       slug: "tinycal",
       defaultAssignee: "z-team-alpha",
     })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe("updateUserSchema", () => {
+  it("accepts role ADMIN", () => {
+    const result = updateUserSchema.safeParse({ role: "ADMIN" })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts role VIEWER", () => {
+    const result = updateUserSchema.safeParse({ role: "VIEWER" })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts ownedProductIds array", () => {
+    const result = updateUserSchema.safeParse({ ownedProductIds: ["prod-1", "prod-2"] })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts both role and ownedProductIds", () => {
+    const result = updateUserSchema.safeParse({
+      role: "VIEWER",
+      ownedProductIds: ["prod-1"],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects invalid role", () => {
+    const result = updateUserSchema.safeParse({ role: "SUPERADMIN" })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects non-string items in ownedProductIds", () => {
+    const result = updateUserSchema.safeParse({ ownedProductIds: [123] })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects empty string in ownedProductIds", () => {
+    const result = updateUserSchema.safeParse({ ownedProductIds: [""] })
+    expect(result.success).toBe(false)
+  })
+
+  it("accepts empty ownedProductIds array", () => {
+    const result = updateUserSchema.safeParse({ ownedProductIds: [] })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts empty object (both fields optional)", () => {
+    const result = updateUserSchema.safeParse({})
     expect(result.success).toBe(true)
   })
 })
