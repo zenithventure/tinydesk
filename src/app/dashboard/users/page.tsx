@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Users } from "lucide-react"
+import { Users, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Select } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -181,33 +181,51 @@ export default function UsersPage() {
                 ) : (
                   <div className="mt-3">
                     <p className="text-xs font-medium text-gray-500 mb-2">
-                      Product access
+                      Product access {ownedIds.length > 0 && (
+                        <span className="text-gray-400 font-normal">
+                          ({ownedIds.length} of {products.length} assigned)
+                        </span>
+                      )}
                     </p>
                     {products.length === 0 ? (
                       <p className="text-xs text-gray-400">No products available</p>
                     ) : (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="space-y-1">
                         {products.map((product) => {
                           const isOwned = ownedIds.includes(product.id)
                           return (
-                            <button
+                            <label
                               key={product.id}
-                              disabled={isUpdating}
-                              onClick={() => handleProductToggle(user.id, product.id, ownedIds)}
-                              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border transition ${
+                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm cursor-pointer transition ${
                                 isOwned
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  : "bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300"
-                              } ${isUpdating ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                  ? "text-gray-900"
+                                  : "text-gray-400"
+                              } ${isUpdating ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}`}
                             >
+                              <span
+                                className={`flex items-center justify-center w-4 h-4 rounded border transition ${
+                                  isOwned
+                                    ? "bg-emerald-500 border-emerald-500"
+                                    : "border-gray-300"
+                                }`}
+                              >
+                                {isOwned && <Check className="w-3 h-3 text-white" />}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={isOwned}
+                                disabled={isUpdating}
+                                onChange={() => handleProductToggle(user.id, product.id, ownedIds)}
+                                className="sr-only"
+                              />
                               {product.name}
-                            </button>
+                            </label>
                           )
                         })}
                       </div>
                     )}
                     {ownedIds.length === 0 && products.length > 0 && (
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-gray-400 mt-2">
                         No products assigned — user can only see their own tickets
                       </p>
                     )}
