@@ -16,11 +16,16 @@ export async function GET() {
     ? {}
     : { id: { in: access.ownedProductIds } }
 
-  const products = await prisma.product.findMany({
-    where,
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, slug: true },
-  })
+  try {
+    const products = await prisma.product.findMany({
+      where,
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
 
-  return NextResponse.json(products)
+    return NextResponse.json(products)
+  } catch (error) {
+    console.error("[dashboard/products/list] Error:", error)
+    return NextResponse.json({ error: "Failed to load projects" }, { status: 500 })
+  }
 }
