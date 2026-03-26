@@ -43,6 +43,15 @@ export const createProductSchema = z.object({
   webhookSecret: z.string().optional(),
 })
 
+export const updateProductSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100).optional(),
+  repoOwner: z.string().optional(),
+  repoName: z.string().optional(),
+  defaultAssignee: z.string().optional(),
+  supportEmail: z.string().email().optional().or(z.literal("")),
+  webhookSecret: z.string().optional(),
+})
+
 export const updateUserSchema = z.object({
   role: z.enum(["ADMIN", "VIEWER"]).optional(),
   ownedProductIds: z.array(z.string().min(1)).optional(),

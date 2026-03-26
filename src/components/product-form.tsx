@@ -4,22 +4,35 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+interface ProductData {
+  id?: string
+  name: string
+  slug: string
+  repoOwner: string
+  repoName: string
+  defaultAssignee: string
+  supportEmail: string
+  webhookSecret: string
+}
+
 interface ProductFormProps {
   onSuccess: () => void
   onCancel: () => void
+  initialData?: ProductData
 }
 
-export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
+export function ProductForm({ onSuccess, onCancel, initialData }: ProductFormProps) {
+  const isEditing = !!initialData?.id
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
-    name: "",
-    slug: "",
-    repoOwner: "",
-    repoName: "",
-    defaultAssignee: "",
-    supportEmail: "",
-    webhookSecret: "",
+  const [formData, setFormData] = useState<ProductData>({
+    name: initialData?.name ?? "",
+    slug: initialData?.slug ?? "",
+    repoOwner: initialData?.repoOwner ?? "",
+    repoName: initialData?.repoName ?? "",
+    defaultAssignee: initialData?.defaultAssignee ?? "",
+    supportEmail: initialData?.supportEmail ?? "",
+    webhookSecret: initialData?.webhookSecret ?? "",
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -28,15 +41,30 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
     setError(null)
 
     try {
-      const res = await fetch("/api/dashboard/products", {
-        method: "POST",
+      const url = isEditing
+        ? `/api/dashboard/products/${initialData!.id}`
+        : "/api/dashboard/products"
+      const method = isEditing ? "PATCH" : "POST"
+      const payload = isEditing
+        ? {
+            name: formData.name,
+            repoOwner: formData.repoOwner,
+            repoName: formData.repoName,
+            defaultAssignee: formData.defaultAssignee,
+            supportEmail: formData.supportEmail,
+            webhookSecret: formData.webhookSecret,
+          }
+        : formData
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
         const data = await res.json()
-        setError(data.error || "Failed to create product")
+        setError(data.error || `Failed to ${isEditing ? "update" : "create"} product`)
         return
       }
 
@@ -49,8 +77,12 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
   }
 
   function handleNameChange(name: string) {
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
-    setFormData({ ...formData, name, slug })
+    if (isEditing) {
+      setFormData({ ...formData, name })
+    } else {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+      setFormData({ ...formData, name, slug })
+    }
   }
 
   return (
@@ -72,6 +104,7 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
         id="slug"
         label="Slug"
         required
+        disabled={isEditing}
         placeholder="e.g. tinycal"
         value={formData.slug}
         onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
@@ -122,7 +155,7 @@ export function ProductForm({ onSuccess, onCancel }: ProductFormProps) {
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Create Product"}
+          {loading ? (isEditing ? "Saving..." : "Creating...") : (isEditing ? "Save Changes" : "Create Product")}
         </Button>
       </div>
     </form>

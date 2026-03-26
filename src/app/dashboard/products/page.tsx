@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Package, Plus } from "lucide-react"
+import { Package, Plus, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Modal } from "@/components/ui/modal"
 import { EmptyState } from "@/components/empty-state"
@@ -16,7 +16,9 @@ interface Product {
   slug: string
   repoOwner: string | null
   repoName: string | null
+  defaultAssignee: string | null
   supportEmail: string | null
+  webhookSecret: string | null
   _count: { tickets: number }
 }
 
@@ -26,6 +28,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
   // Redirect regular users (non-admin, non-product-owner) away from this page.
   useEffect(() => {
@@ -88,14 +91,30 @@ export default function ProductsPage() {
                   <h3 className="font-semibold text-gray-900">{product.name}</h3>
                   <p className="text-sm text-gray-500 font-mono">{product.slug}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{product._count.tickets}</p>
-                  <p className="text-xs text-gray-500">tickets</p>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">{product._count.tickets}</p>
+                    <p className="text-xs text-gray-500">tickets</p>
+                  </div>
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingProduct(product)}
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                    </Button>
+                  )}
                 </div>
               </div>
               {(product.repoOwner || product.repoName) && (
                 <p className="text-xs text-gray-400 mt-2">
                   GitHub: {product.repoOwner}/{product.repoName}
+                </p>
+              )}
+              {product.defaultAssignee && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Default assignee: @{product.defaultAssignee}
                 </p>
               )}
             </div>
@@ -112,6 +131,29 @@ export default function ProductsPage() {
           }}
           onCancel={() => setShowCreate(false)}
         />
+      </Modal>
+
+      <Modal open={!!editingProduct} onClose={() => setEditingProduct(null)} title="Edit Product">
+        {editingProduct && (
+          <ProductForm
+            initialData={{
+              id: editingProduct.id,
+              name: editingProduct.name,
+              slug: editingProduct.slug,
+              repoOwner: editingProduct.repoOwner ?? "",
+              repoName: editingProduct.repoName ?? "",
+              defaultAssignee: editingProduct.defaultAssignee ?? "",
+              supportEmail: editingProduct.supportEmail ?? "",
+              webhookSecret: editingProduct.webhookSecret ?? "",
+            }}
+            onSuccess={() => {
+              setEditingProduct(null)
+              setLoading(true)
+              fetchProducts()
+            }}
+            onCancel={() => setEditingProduct(null)}
+          />
+        )}
       </Modal>
     </div>
   )
