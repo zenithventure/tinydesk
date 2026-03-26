@@ -18,7 +18,11 @@ const navItems = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, isLoading, isAuthenticated, logout } = useAuth()
+  const { user, isLoading, isAuthenticated, isAdmin, isProductOwner, logout } = useAuth()
+
+  const navItems = ALL_NAV_ITEMS.filter(
+    (item) => !item.adminOrOwnerOnly || isAdmin || isProductOwner
+  )
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
