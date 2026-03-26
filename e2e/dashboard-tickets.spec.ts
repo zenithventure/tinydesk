@@ -24,6 +24,12 @@ test.describe("Dashboard (unauthenticated)", () => {
     await page.waitForURL(/\/login/)
     expect(page.url()).toContain("/login")
   })
+
+  test("redirects to login from users page", async ({ page }) => {
+    await page.goto("/dashboard/users")
+    await page.waitForURL(/\/login/)
+    expect(page.url()).toContain("/login")
+  })
 })
 
 test.describe("Public ticket creation API", () => {

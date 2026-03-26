@@ -41,4 +41,16 @@ test.describe("Authentication", () => {
     })
     expect(response.status()).toBe(401)
   })
+
+  test("dashboard users API returns 401 without auth", async ({ request }) => {
+    const response = await request.get("/api/dashboard/users")
+    expect(response.status()).toBe(401)
+  })
+
+  test("dashboard user update API returns 401 without auth", async ({ request }) => {
+    const response = await request.patch("/api/dashboard/users/some-id", {
+      data: { role: "ADMIN" },
+    })
+    expect(response.status()).toBe(401)
+  })
 })
