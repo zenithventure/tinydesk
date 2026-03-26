@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Ticket, Settings, LayoutDashboard, LogOut, Menu, X, Package, LifeBuoy } from "lucide-react"
+import { Ticket, Settings, LayoutDashboard, LogOut, Menu, X, Package, PenSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/contexts/auth-context"
 
@@ -11,7 +11,7 @@ const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
   { href: "/dashboard/products", label: "Products", icon: Package },
-  { href: "/dashboard/support", label: "Support", icon: LifeBuoy },
+  { href: "/dashboard/support", label: "Submit Ticket", icon: PenSquare },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ]
 

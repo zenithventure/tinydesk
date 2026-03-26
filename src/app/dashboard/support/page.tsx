@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { CheckCircle, ExternalLink, ImagePlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,12 @@ import { useAuth } from "@/lib/contexts/auth-context"
 const MAX_SCREENSHOTS = 3
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 
+interface ProductOption {
+  id: string
+  name: string
+  slug: string
+}
+
 export default function SupportPage() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
@@ -20,7 +26,30 @@ export default function SupportPage() {
   const [body, setBody] = useState("")
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
+  const [products, setProducts] = useState<ProductOption[]>([])
+  const [selectedSlug, setSelectedSlug] = useState("")
+  const [productsLoading, setProductsLoading] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/dashboard/products/list")
+        if (res.ok) {
+          const data: ProductOption[] = await res.json()
+          setProducts(data)
+          if (data.length === 1) {
+            setSelectedSlug(data[0].slug)
+          }
+        }
+      } catch {
+        // Products will just be empty — user sees a message
+      } finally {
+        setProductsLoading(false)
+      }
+    }
+    fetchProducts()
+  }, [])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files || [])
@@ -54,6 +83,10 @@ export default function SupportPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!selectedSlug) {
+      setError("Please select a project")
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -83,7 +116,7 @@ export default function SupportPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          productSlug: "tinydesk",
+          productSlug: selectedSlug,
           submitterEmail: user?.email,
           submitterName: user?.name,
           subject,
@@ -110,7 +143,7 @@ export default function SupportPage() {
   if (submitted) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Support</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Submit a Ticket</h1>
         <div className="bg-white rounded-xl border p-8 text-center max-w-md mx-auto">
           <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-6 h-6 text-emerald-600" />
@@ -148,9 +181,9 @@ export default function SupportPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Support</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Submit a Ticket</h1>
       <p className="text-sm text-gray-500 mb-6">
-        Found a bug or need help with TinyDesk? Submit a ticket and we&apos;ll track it through our pipeline.
+        Submit a ticket for any project and we&apos;ll track it through our pipeline.
       </p>
 
       <div className="bg-white rounded-xl border p-6 max-w-lg">
@@ -169,11 +202,42 @@ export default function SupportPage() {
             disabled
           />
 
+          {/* Project selector */}
+          <div>
+            <label htmlFor="project" className="block text-sm font-medium text-gray-700 mb-1">
+              Project
+            </label>
+            {productsLoading ? (
+              <div className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-400">
+                Loading projects...
+              </div>
+            ) : products.length === 0 ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-700">
+                No projects available. Ask an admin to add your project first.
+              </div>
+            ) : (
+              <select
+                id="project"
+                value={selectedSlug}
+                onChange={(e) => setSelectedSlug(e.target.value)}
+                required
+                className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value="">Select a project...</option>
+                {products.map((p) => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
           <Input
             id="subject"
             label="Subject"
             required
-            placeholder="Brief summary of the issue"
+            placeholder="Brief summary of the request"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
           />
@@ -183,7 +247,7 @@ export default function SupportPage() {
             label="Description"
             required
             rows={5}
-            placeholder="Describe the issue in detail..."
+            placeholder="Describe what you need in detail..."
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
@@ -232,7 +296,7 @@ export default function SupportPage() {
             />
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full">
+          <Button type="submit" disabled={loading || products.length === 0} className="w-full">
             {loading ? "Submitting..." : "Submit Ticket"}
           </Button>
         </form>
