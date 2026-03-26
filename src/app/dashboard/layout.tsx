@@ -7,7 +7,7 @@ import { Ticket, Settings, LayoutDashboard, LogOut, Menu, X, Package, PenSquare 
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/contexts/auth-context"
 
-const navItems = [
+const ALL_NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
   { href: "/dashboard/products", label: "Products", icon: Package },
