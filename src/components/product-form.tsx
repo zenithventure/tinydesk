@@ -246,7 +246,7 @@ function WebhookInfoCallout({
       <div className="space-y-1.5">
         <div>
           <span className="text-blue-700">URL: </span>
-          <code className="bg-blue-100 px-1.5 py-0.5 rounded text-xs">{webhookUrl}</code>
+          <code className="bg-blue-100 px-1.5 py-0.5 rounded text-xs whitespace-nowrap">{webhookUrl}</code>
           <button
             type="button"
             onClick={onCopy}
