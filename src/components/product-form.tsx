@@ -5,7 +5,7 @@ import { Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-const WEBHOOK_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/github`
+const WEBHOOK_URL = `${(process.env.NEXT_PUBLIC_APP_URL || "").trim()}/api/webhooks/github`
 
 interface ProductData {
   id?: string
@@ -244,13 +244,13 @@ function WebhookInfoCallout({
         )}
       </div>
       <div className="space-y-1.5">
-        <div>
-          <span className="text-blue-700">URL: </span>
+        <div className="flex items-center gap-1.5 overflow-x-auto">
+          <span className="text-blue-700 shrink-0">URL:</span>
           <code className="bg-blue-100 px-1.5 py-0.5 rounded text-xs whitespace-nowrap">{webhookUrl}</code>
           <button
             type="button"
             onClick={onCopy}
-            className="inline-flex items-center ml-1.5 text-blue-600 hover:text-blue-800"
+            className="inline-flex items-center shrink-0 text-blue-600 hover:text-blue-800"
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
