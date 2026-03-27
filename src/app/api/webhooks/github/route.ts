@@ -37,6 +37,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Mark webhook as configured on first successful delivery
+    if (!product.webhookConfigured) {
+      await prisma.product.update({
+        where: { id: product.id },
+        data: { webhookConfigured: true },
+      })
+    }
+
     // Handle issue events
     if (event === "issues") {
       const ticketId = extractTicketId(payload.issue?.body)
