@@ -144,6 +144,30 @@ export async function createGitHubWebhook(opts: {
   }
 }
 
+export async function checkGitHubWebhookExists(opts: {
+  owner: string
+  repo: string
+  webhookUrl: string
+}): Promise<boolean> {
+  try {
+    const token = await getInstallationToken()
+    const res = await fetch(
+      `https://api.github.com/repos/${opts.owner}/${opts.repo}/hooks`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+        },
+      }
+    )
+    if (!res.ok) return false
+    const hooks = await res.json()
+    return hooks.some((h: any) => h.config?.url === opts.webhookUrl)
+  } catch {
+    return false
+  }
+}
+
 /**
  * Check whether the GitHub App is configured by reading env vars at call time.
  * Reading at call time (rather than module load time) avoids a Next.js module

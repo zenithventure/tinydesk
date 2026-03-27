@@ -3,7 +3,7 @@ import { randomBytes } from "crypto"
 import prisma from "@/lib/prisma"
 import { requireAdmin } from "@/lib/auth"
 import { updateProductSchema } from "@/lib/validators"
-import { createGitHubWebhook, isGitHubAppConfigured } from "@/lib/github-app"
+import { createGitHubWebhook, checkGitHubWebhookExists, isGitHubAppConfigured } from "@/lib/github-app"
 import { absoluteUrl } from "@/lib/utils"
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -43,30 +43,52 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     })
 
     let webhookAutoConfigured: boolean | undefined
-    const repoChanged = product.repoOwner !== existing.repoOwner || product.repoName !== existing.repoName
-    if (repoChanged && product.repoOwner && product.repoName && isGitHubAppConfigured()) {
-      const secret = product.webhookSecret || randomBytes(32).toString("hex")
-      if (!product.webhookSecret) {
-        await prisma.product.update({
-          where: { id: product.id },
-          data: { webhookSecret: secret },
-        })
-      }
+    if (product.repoOwner && product.repoName && isGitHubAppConfigured()) {
       const webhookUrl = absoluteUrl("/api/webhooks/github")
-      const result = await createGitHubWebhook({
+
+      // Check if webhook already exists on the repo
+      const exists = await checkGitHubWebhookExists({
         owner: product.repoOwner,
         repo: product.repoName,
         webhookUrl,
-        secret,
       })
-      webhookAutoConfigured = result.success
-      if (result.success) {
-        await prisma.product.update({
-          where: { id: product.id },
-          data: { webhookConfigured: true },
-        })
+
+      if (exists) {
+        webhookAutoConfigured = true
+        if (!product.webhookConfigured) {
+          await prisma.product.update({
+            where: { id: product.id },
+            data: { webhookConfigured: true },
+          })
+        }
       } else {
-        console.log("[dashboard/products] Webhook auto-create failed (expected for external repos):", result.error)
+        // Try to auto-create
+        const secret = product.webhookSecret || randomBytes(32).toString("hex")
+        if (!product.webhookSecret) {
+          await prisma.product.update({
+            where: { id: product.id },
+            data: { webhookSecret: secret },
+          })
+        }
+        const result = await createGitHubWebhook({
+          owner: product.repoOwner,
+          repo: product.repoName,
+          webhookUrl,
+          secret,
+        })
+        webhookAutoConfigured = result.success
+        if (result.success) {
+          await prisma.product.update({
+            where: { id: product.id },
+            data: { webhookConfigured: true },
+          })
+        } else {
+          await prisma.product.update({
+            where: { id: product.id },
+            data: { webhookConfigured: false },
+          })
+          console.log("[dashboard/products] Webhook auto-create failed (expected for external repos):", result.error)
+        }
       }
     }
 
