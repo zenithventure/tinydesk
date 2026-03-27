@@ -91,8 +91,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true, message: "Unhandled action" })
       }
 
-      // Link PR to ticket on open
-      if (payload.action === "opened") {
+      // Link PR to ticket on open/reopen
+      if (payload.action === "opened" || payload.action === "reopened") {
         await prisma.ticket.update({
           where: { id: ticket.id },
           data: {

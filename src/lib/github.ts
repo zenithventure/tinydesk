@@ -58,7 +58,7 @@ export function mapEventToStatus(
     }
   }
 
-  if (event === "pull_request" && action === "opened") {
+  if (event === "pull_request" && (action === "opened" || action === "reopened")) {
     return {
       status: "PR_OPEN",
       eventType: "pr_opened",
