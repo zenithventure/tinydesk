@@ -88,6 +88,62 @@ export async function createGitHubIssue(opts: {
   return { number: data.number, html_url: data.html_url }
 }
 
+export async function createGitHubWebhook(opts: {
+  owner: string
+  repo: string
+  webhookUrl: string
+  secret: string
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const token = await getInstallationToken()
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    }
+
+    // Check for existing webhook with same URL to prevent duplicates
+    const listRes = await fetch(
+      `https://api.github.com/repos/${opts.owner}/${opts.repo}/hooks`,
+      { headers }
+    )
+    if (listRes.ok) {
+      const hooks = await listRes.json()
+      if (hooks.some((h: any) => h.config?.url === opts.webhookUrl)) {
+        return { success: true }
+      }
+    }
+
+    const res = await fetch(
+      `https://api.github.com/repos/${opts.owner}/${opts.repo}/hooks`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          name: "web",
+          active: true,
+          events: ["issues", "pull_request", "pull_request_review"],
+          config: {
+            url: opts.webhookUrl,
+            content_type: "application/json",
+            secret: opts.secret,
+            insecure_ssl: "0",
+          },
+        }),
+      }
+    )
+
+    if (!res.ok) {
+      const text = await res.text()
+      return { success: false, error: `${res.status} ${text}` }
+    }
+
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
+  }
+}
+
 /**
  * Check whether the GitHub App is configured by reading env vars at call time.
  * Reading at call time (rather than module load time) avoids a Next.js module
