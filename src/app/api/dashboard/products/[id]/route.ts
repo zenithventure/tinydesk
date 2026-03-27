@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+import { randomBytes } from "crypto"
 import prisma from "@/lib/prisma"
 import { requireAdmin } from "@/lib/auth"
 import { updateProductSchema } from "@/lib/validators"
+import { createGitHubWebhook, isGitHubAppConfigured } from "@/lib/github-app"
+import { absoluteUrl } from "@/lib/utils"
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin()
@@ -39,7 +42,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
     })
 
-    return NextResponse.json(product)
+    let webhookAutoConfigured: boolean | undefined
+    const repoChanged = product.repoOwner !== existing.repoOwner || product.repoName !== existing.repoName
+    if (repoChanged && product.repoOwner && product.repoName && isGitHubAppConfigured()) {
+      const secret = product.webhookSecret || randomBytes(32).toString("hex")
+      if (!product.webhookSecret) {
+        await prisma.product.update({
+          where: { id: product.id },
+          data: { webhookSecret: secret },
+        })
+      }
+      const webhookUrl = absoluteUrl("/api/webhooks/github")
+      const result = await createGitHubWebhook({
+        owner: product.repoOwner,
+        repo: product.repoName,
+        webhookUrl,
+        secret,
+      })
+      webhookAutoConfigured = result.success
+      if (!result.success) {
+        console.log("[dashboard/products] Webhook auto-create failed (expected for external repos):", result.error)
+      }
+    }
+
+    return NextResponse.json({ ...product, webhookAutoConfigured })
   } catch (error) {
     console.error("[dashboard/products/[id]] Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
