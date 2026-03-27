@@ -19,6 +19,7 @@ interface Product {
   defaultAssignee: string | null
   supportEmail: string | null
   webhookSecret: string | null
+  webhookConfigured: boolean
   _count: { tickets: number }
 }
 
@@ -108,9 +109,22 @@ export default function ProductsPage() {
                 </div>
               </div>
               {(product.repoOwner || product.repoName) && (
-                <p className="text-xs text-gray-400 mt-2">
-                  GitHub: {product.repoOwner}/{product.repoName}
-                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <p className="text-xs text-gray-400">
+                    GitHub: {product.repoOwner}/{product.repoName}
+                  </p>
+                  {product.webhookConfigured ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                      Webhook active
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      Webhook not configured
+                    </span>
+                  )}
+                </div>
               )}
               {product.defaultAssignee && (
                 <p className="text-xs text-gray-400 mt-1">

@@ -74,7 +74,12 @@ export async function POST(req: NextRequest) {
         secret,
       })
       webhookAutoConfigured = result.success
-      if (!result.success) {
+      if (result.success) {
+        await prisma.product.update({
+          where: { id: product.id },
+          data: { webhookConfigured: true },
+        })
+      } else {
         console.log("[dashboard/products] Webhook auto-create failed (expected for external repos):", result.error)
       }
     }
