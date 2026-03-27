@@ -5,7 +5,7 @@ import { Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-const WEBHOOK_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/github`
+const WEBHOOK_URL = `${(process.env.NEXT_PUBLIC_APP_URL || "").trim()}/api/webhooks/github`
 
 interface ProductData {
   id?: string
