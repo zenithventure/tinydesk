@@ -128,7 +128,7 @@ export function ProductForm({ onSuccess, onCancel, initialData }: ProductFormPro
 
       {webhookStatus ? (
         <>
-          <WebhookInfoCallout webhookUrl={WEBHOOK_URL} copied={copied} onCopy={copyWebhookUrl} />
+          <WebhookInfoCallout webhookUrl={WEBHOOK_URL} copied={copied} onCopy={copyWebhookUrl} repoOwner={formData.repoOwner} repoName={formData.repoName} />
           <div className="flex justify-end pt-2">
             <Button type="button" onClick={onSuccess}>Done</Button>
           </div>
@@ -157,7 +157,7 @@ export function ProductForm({ onSuccess, onCancel, initialData }: ProductFormPro
           <div className="grid grid-cols-2 gap-3">
             <Input
               id="repoOwner"
-              label="GitHub Owner"
+              label="GitHub Organization"
               placeholder="e.g. myorg"
               value={formData.repoOwner}
               onChange={(e) => setFormData({ ...formData, repoOwner: e.target.value })}
@@ -172,7 +172,7 @@ export function ProductForm({ onSuccess, onCancel, initialData }: ProductFormPro
           </div>
 
           {hasRepo && (
-            <WebhookInfoCallout webhookUrl={WEBHOOK_URL} copied={copied} onCopy={copyWebhookUrl} />
+            <WebhookInfoCallout webhookUrl={WEBHOOK_URL} copied={copied} onCopy={copyWebhookUrl} repoOwner={formData.repoOwner} repoName={formData.repoName} />
           )}
 
           <Input
@@ -216,14 +216,33 @@ function WebhookInfoCallout({
   webhookUrl,
   copied,
   onCopy,
+  repoOwner,
+  repoName,
 }: {
   webhookUrl: string
   copied: boolean
   onCopy: () => void
+  repoOwner?: string
+  repoName?: string
 }) {
+  const settingsUrl = repoOwner && repoName
+    ? `https://github.com/${repoOwner}/${repoName}/settings/hooks/new`
+    : null
   return (
     <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
-      <p className="font-medium text-blue-900 mb-2">GitHub Webhook Setup</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="font-medium text-blue-900">GitHub Webhook Setup</p>
+        {settingsUrl && (
+          <a
+            href={settingsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 hover:text-blue-800 underline"
+          >
+            Open in GitHub
+          </a>
+        )}
+      </div>
       <div className="space-y-1.5">
         <div>
           <span className="text-blue-700">URL: </span>
