@@ -35,6 +35,7 @@ const products = [
     repoOwner: "zenithventure",
     repoName: "tinydesk",
     webhookSecret: generateSecret(),
+    selfService: true,
   },
 ]
 
