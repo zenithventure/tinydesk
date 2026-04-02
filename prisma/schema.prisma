@@ -51,6 +51,7 @@ model Product {
   supportEmail     String?
   vercelProjectId  String?
   webhookSecret      String?
+  selfService        Boolean        @default(false)
   webhookConfigured  Boolean        @default(false)
   createdAt          DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
