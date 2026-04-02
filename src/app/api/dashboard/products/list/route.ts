@@ -4,7 +4,8 @@ import { requireDashboardAccess } from "@/lib/auth"
 
 /**
  * Returns a lightweight list of products for the ticket submission form.
- * Admins see all products; product owners see their owned products.
+ * All authenticated users can see all products so they can submit tickets
+ * against any product.
  */
 export async function GET() {
   const access = await requireDashboardAccess()
@@ -12,9 +13,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const where = access.isAdmin
-    ? {}
-    : { id: { in: access.ownedProductIds } }
+  const where = {}
 
   try {
     const products = await prisma.product.findMany({
