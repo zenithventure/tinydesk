@@ -102,6 +102,8 @@ export async function createGitHubWebhook(opts: {
       "Content-Type": "application/json",
     }
 
+    const requiredEvents = ["issues", "pull_request", "pull_request_review"]
+
     // Check for existing webhook with same URL to prevent duplicates
     const listRes = await fetch(
       `https://api.github.com/repos/${opts.owner}/${opts.repo}/hooks`,
@@ -109,7 +111,31 @@ export async function createGitHubWebhook(opts: {
     )
     if (listRes.ok) {
       const hooks = await listRes.json()
-      if (hooks.some((h: any) => h.config?.url === opts.webhookUrl)) {
+      const existing = hooks.find((h: any) => h.config?.url === opts.webhookUrl)
+      if (existing) {
+        // Verify the existing webhook has all required events; update if not
+        const currentEvents: string[] = existing.events || []
+        const missingEvents = requiredEvents.filter(
+          (e) => !currentEvents.includes(e)
+        )
+        if (missingEvents.length === 0) {
+          return { success: true }
+        }
+        // Patch the webhook to include all required events
+        const patchRes = await fetch(
+          `https://api.github.com/repos/${opts.owner}/${opts.repo}/hooks/${existing.id}`,
+          {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({
+              events: requiredEvents,
+            }),
+          }
+        )
+        if (!patchRes.ok) {
+          const text = await patchRes.text()
+          return { success: false, error: `Failed to update webhook events: ${patchRes.status} ${text}` }
+        }
         return { success: true }
       }
     }
@@ -122,7 +148,7 @@ export async function createGitHubWebhook(opts: {
         body: JSON.stringify({
           name: "web",
           active: true,
-          events: ["issues", "pull_request", "pull_request_review"],
+          events: requiredEvents,
           config: {
             url: opts.webhookUrl,
             content_type: "application/json",
