@@ -214,3 +214,113 @@ describe("PATCH /api/dashboard/products/[id] — empty string to null conversion
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// GET /api/dashboard/products/list — all authenticated users see all products
+// ---------------------------------------------------------------------------
+
+describe("GET /api/dashboard/products/list — submission dropdown products", () => {
+  const mockProducts = [
+    { id: "prod-1", name: "Admin Product", slug: "admin-product" },
+    { id: "prod-2", name: "Owned Product", slug: "owned-product" },
+    { id: "prod-3", name: "Self-Service Product", slug: "self-service-product" },
+    { id: "prod-4", name: "Another Product", slug: "another-product" },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns all products for admin user", async () => {
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as never)
+
+    const result = await prisma.product.findMany({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+
+    expect(result).toHaveLength(4)
+    expect(result).toEqual(mockProducts)
+    expect(prisma.product.findMany).toHaveBeenCalledWith({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+  })
+
+  it("returns all products for product owner user", async () => {
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as never)
+
+    const result = await prisma.product.findMany({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+
+    expect(result).toHaveLength(4)
+    expect(result).toEqual(mockProducts)
+  })
+
+  it("returns all products for regular VIEWER user (non-owner)", async () => {
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as never)
+
+    // VIEWER users without ownership should now see all products
+    const result = await prisma.product.findMany({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+
+    expect(result).toHaveLength(4)
+    expect(result).toEqual(mockProducts)
+  })
+
+  it("returns products ordered by name ascending", async () => {
+    const sortedProducts = [
+      { id: "prod-4", name: "Admin Product", slug: "admin-product" },
+      { id: "prod-2", name: "Another Product", slug: "another-product" },
+      { id: "prod-3", name: "Owned Product", slug: "owned-product" },
+      { id: "prod-1", name: "Self-Service Product", slug: "self-service-product" },
+    ]
+    vi.mocked(prisma.product.findMany).mockResolvedValue(sortedProducts as never)
+
+    const result = await prisma.product.findMany({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+
+    expect(result[0].name).toBe("Admin Product")
+    expect(result[result.length - 1].name).toBe("Self-Service Product")
+  })
+
+  it("returns empty list when no products exist", async () => {
+    vi.mocked(prisma.product.findMany).mockResolvedValue([] as never)
+
+    const result = await prisma.product.findMany({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+
+    expect(result).toHaveLength(0)
+    expect(result).toEqual([])
+  })
+
+  it("selects only id, name, and slug fields", async () => {
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as never)
+
+    await prisma.product.findMany({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+
+    expect(prisma.product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: { id: true, name: true, slug: true },
+      })
+    )
+  })
+})
