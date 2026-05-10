@@ -13,11 +13,13 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/auth", () => ({
   requireAdmin: vi.fn(),
+  requireDashboardAccess: vi.fn(),
 }))
 
 import prisma from "@/lib/prisma"
-import { requireAdmin } from "@/lib/auth"
+import { requireAdmin, requireDashboardAccess } from "@/lib/auth"
 import { updateProductSchema } from "@/lib/validators"
+import { GET } from "@/app/api/dashboard/products/list/route"
 
 // ---------------------------------------------------------------------------
 // Schema validation
@@ -212,5 +214,135 @@ describe("PATCH /api/dashboard/products/[id] — empty string to null conversion
       const prismaValue = value !== undefined ? (value || null) : undefined
       expect(prismaValue).toBeUndefined()
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GET /api/dashboard/products/list — all authenticated users see all products
+// ---------------------------------------------------------------------------
+
+describe("GET /api/dashboard/products/list — submission dropdown products", () => {
+  const mockProducts = [
+    { id: "prod-1", name: "Admin Product", slug: "admin-product" },
+    { id: "prod-2", name: "Owned Product", slug: "owned-product" },
+    { id: "prod-3", name: "Self-Service Product", slug: "self-service-product" },
+    { id: "prod-4", name: "Another Product", slug: "another-product" },
+  ]
+
+  const adminAccess = {
+    user: { id: "user-1", role: "ADMIN", email: "admin@example.com" },
+    ownedProductIds: [],
+    isAdmin: true,
+    isProductOwner: false,
+  }
+
+  const ownerAccess = {
+    user: { id: "user-2", role: "VIEWER", email: "owner@example.com" },
+    ownedProductIds: ["prod-2"],
+    isAdmin: false,
+    isProductOwner: true,
+  }
+
+  const viewerAccess = {
+    user: { id: "user-3", role: "VIEWER", email: "viewer@example.com" },
+    ownedProductIds: [],
+    isAdmin: false,
+    isProductOwner: false,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns 401 when user is not authenticated", async () => {
+    vi.mocked(requireDashboardAccess).mockResolvedValue(null)
+
+    const response = await GET()
+
+    expect(requireDashboardAccess).toHaveBeenCalled()
+    expect(response.status).toBe(401)
+    const body = await response.json()
+    expect(body).toEqual({ error: "Unauthorized" })
+    expect(prisma.product.findMany).not.toHaveBeenCalled()
+  })
+
+  it("returns all products for admin user", async () => {
+    vi.mocked(requireDashboardAccess).mockResolvedValue(adminAccess as never)
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as never)
+
+    const response = await GET()
+
+    expect(requireDashboardAccess).toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toHaveLength(4)
+    expect(body).toEqual(mockProducts)
+    expect(prisma.product.findMany).toHaveBeenCalledWith({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+  })
+
+  it("returns all products for product owner user", async () => {
+    vi.mocked(requireDashboardAccess).mockResolvedValue(ownerAccess as never)
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as never)
+
+    const response = await GET()
+
+    expect(requireDashboardAccess).toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toHaveLength(4)
+    expect(body).toEqual(mockProducts)
+    expect(prisma.product.findMany).toHaveBeenCalledWith({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+  })
+
+  it("returns all products for VIEWER user with no product ownership", async () => {
+    vi.mocked(requireDashboardAccess).mockResolvedValue(viewerAccess as never)
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as never)
+
+    const response = await GET()
+
+    expect(requireDashboardAccess).toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toHaveLength(4)
+    expect(body).toEqual(mockProducts)
+    // Key assertion: VIEWER gets where: {} — no product filtering
+    expect(prisma.product.findMany).toHaveBeenCalledWith({
+      where: {},
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    })
+  })
+
+  it("returns empty list when no products exist", async () => {
+    vi.mocked(requireDashboardAccess).mockResolvedValue(adminAccess as never)
+    vi.mocked(prisma.product.findMany).mockResolvedValue([] as never)
+
+    const response = await GET()
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toHaveLength(0)
+    expect(body).toEqual([])
+  })
+
+  it("selects only id, name, and slug fields", async () => {
+    vi.mocked(requireDashboardAccess).mockResolvedValue(adminAccess as never)
+    vi.mocked(prisma.product.findMany).mockResolvedValue(mockProducts as never)
+
+    await GET()
+
+    expect(prisma.product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: { id: true, name: true, slug: true },
+      })
+    )
   })
 })
